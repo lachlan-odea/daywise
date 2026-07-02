@@ -1,0 +1,19 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="64" height="64" rx="14" fill="#132145"/>
+  <!-- left page -->
+  <path d="M32 18C27 15 20 14.5 15 15.5V45C20 44 27 44.5 32 47.5V18Z" fill="#3491f0"/>
+  <path d="M32 18C29 16 24 15.5 20 16V44.5C24 44 29 44.5 32 46.5V18Z" fill="#20336c"/>
+  <!-- right page -->
+  <path d="M32 18C37 15 44 14.5 49 15.5V45C44 44 37 44.5 32 47.5V18Z" fill="#17a085"/>
+  <path d="M32 18C35 16 40 15.5 44 16V44.5C40 44 35 44.5 32 46.5V18Z" fill="#2fba93"/>
+  <!-- checklist dots -->
+  <circle cx="25" cy="24" r="1.6" fill="#5dd2b1"/>
+  <circle cx="25" cy="30" r="1.6" fill="#59b0fb"/>
+  <rect x="28" y="23" width="8" height="2" rx="1" fill="#ffffff" transform="translate(-3.5 0)"/>
+  <rect x="24.5" y="29" width="8" height="2" rx="1" fill="#ffffff"/>
+  <!-- checkmark -->
+  <path d="M37 26.5l2.2 2.2 4.3-4.4" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="37" y="32" width="8" height="2" rx="1" fill="#ffffff"/>
+  <!-- sparkles -->
+  <path d="M32 6l1 2.4 2.4 1-2.4 1L32 13l-1-2.6-2.4-1 2.4-1L32 6z" fill="#2fba93"/>
+</svg>
