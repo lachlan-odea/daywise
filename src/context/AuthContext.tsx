@@ -25,8 +25,15 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
+/** Throws a clear error when an auth action is attempted before Firebase is configured. */
+function requireAuth() {
+  if (!auth) throw { code: 'auth/operation-not-allowed' }
+  return auth
+}
+
 /** Creates (or updates) the user's profile document in Firestore. */
 async function upsertUserProfile(user: User) {
+  if (!db) return
   const ref = doc(db, 'users', user.uid)
   const snap = await getDoc(ref)
   await setDoc(
@@ -49,6 +56,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (!auth) {
+      setLoading(false)
+      return
+    }
     const unsub = onAuthStateChanged(auth, (u) => {
       setUser(u)
       setLoading(false)
@@ -57,18 +68,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const signUpWithEmail = async (name: string, email: string, password: string) => {
-    const cred = await createUserWithEmailAndPassword(auth, email, password)
+    const cred = await createUserWithEmailAndPassword(requireAuth(), email, password)
     if (name) await updateProfile(cred.user, { displayName: name })
     await upsertUserProfile(cred.user)
   }
 
   const signInWithEmail = async (email: string, password: string) => {
-    const cred = await signInWithEmailAndPassword(auth, email, password)
+    const cred = await signInWithEmailAndPassword(requireAuth(), email, password)
     await upsertUserProfile(cred.user)
   }
 
   const signInWithProvider = async (provider: FirebaseAuthProvider) => {
-    const cred = await signInWithPopup(auth, provider)
+    const cred = await signInWithPopup(requireAuth(), provider)
     await upsertUserProfile(cred.user)
   }
 
@@ -79,7 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signInWithEmail,
     signInWithGoogle: () => signInWithProvider(googleProvider),
     signInWithMicrosoft: () => signInWithProvider(microsoftProvider),
-    logout: () => signOut(auth),
+    logout: () => (auth ? signOut(auth) : Promise.resolve()),
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

@@ -1,6 +1,6 @@
-import { initializeApp } from 'firebase/app'
-import { getAuth, GoogleAuthProvider, OAuthProvider } from 'firebase/auth'
-import { getFirestore } from 'firebase/firestore'
+import { initializeApp, type FirebaseApp } from 'firebase/app'
+import { getAuth, GoogleAuthProvider, OAuthProvider, type Auth } from 'firebase/auth'
+import { getFirestore, type Firestore } from 'firebase/firestore'
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -14,16 +14,30 @@ const firebaseConfig = {
 /** True when the Firebase env vars have actually been provided. */
 export const firebaseConfigured = Boolean(firebaseConfig.apiKey && firebaseConfig.projectId)
 
-const app = initializeApp(firebaseConfig)
+// Only initialize Firebase when configured. Calling getAuth() with an empty
+// config throws (auth/invalid-api-key), which would crash the whole app — so we
+// guard here and let the UI show a friendly "not configured yet" message.
+let app: FirebaseApp | undefined
+let auth: Auth | undefined
+let db: Firestore | undefined
 
-export const auth = getAuth(app)
-export const db = getFirestore(app)
+if (firebaseConfigured) {
+  app = initializeApp(firebaseConfig)
+  auth = getAuth(app)
+  db = getFirestore(app)
+} else {
+  console.warn(
+    '[Project Daybook] Firebase is not configured. Add your VITE_FIREBASE_* values ' +
+      '(.env locally, GitHub secrets in CI). See FIREBASE_SETUP.md.',
+  )
+}
 
-// Google OAuth
+export { app, auth, db }
+
+// Providers don't require config to instantiate.
 export const googleProvider = new GoogleAuthProvider()
 googleProvider.setCustomParameters({ prompt: 'select_account' })
 
-// Microsoft (Azure AD) OAuth via the generic OAuth provider
 export const microsoftProvider = new OAuthProvider('microsoft.com')
 microsoftProvider.setCustomParameters({ prompt: 'select_account' })
 
