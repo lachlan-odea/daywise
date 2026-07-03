@@ -7,6 +7,7 @@ import {
   CLASS_COLORS,
   cellKey,
   currentWeek,
+  effectiveTime,
   subscribeTimetable,
   type ClassColor,
   type Timetable,
@@ -118,7 +119,8 @@ export default function Dashboard() {
             ) : (
               <div className="space-y-2">
                 {todaysClasses.map(({ p, cell }) => {
-                  const isNow = !!(p.start && p.end && p.start <= nowHHMM && nowHHMM < p.end)
+                  const time = effectiveTime(tt!, p, week, today)
+                  const isNow = !!(time.start && time.end && time.start <= nowHHMM && nowHHMM < time.end)
                   const color = (cell!.color ?? 'teal') as ClassColor
                   return (
                     <div
@@ -129,7 +131,7 @@ export default function Dashboard() {
                     >
                       <span className={`text-xs font-bold ${isNow ? 'text-teal-300' : 'text-navy-400'}`}>
                         {p.label}
-                        {p.start ? ` · ${p.start}` : ''}
+                        {time.start ? ` · ${time.start}` : ''}
                       </span>
                       <span className="flex items-center gap-2 text-sm font-semibold">
                         {!isNow && <span className={`h-2 w-2 rounded-full ${CLASS_COLORS[color].dot}`} />}

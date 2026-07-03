@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Pencil, Plus, Trash2, X, Check, Loader2, RotateCcw, CalendarClock } from 'lucide-react'
+import { Pencil, Plus, Trash2, X, Check, Loader2, RotateCcw, CalendarClock, Clock } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import {
   CLASS_COLORS,
@@ -10,6 +10,8 @@ import {
   cellKey,
   currentWeek,
   defaultTimetable,
+  effectiveTime,
+  hasTimeOverride,
   mondayISO,
   newId,
   saveTimetable,
@@ -17,6 +19,7 @@ import {
   type ClassCell,
   type ClassColor,
   type Timetable,
+  type TimeSlot,
   type WeekId,
 } from '../lib/timetable'
 import { firebaseConfigured } from '../lib/firebase'
@@ -85,6 +88,15 @@ export default function Timetable() {
     })
   }
 
+  const setTimeOverride = (week: WeekId, periodId: string, day: number, time: TimeSlot | null) => {
+    mutate((d) => {
+      const k = cellKey(week, periodId, day)
+      d.timeOverrides = d.timeOverrides ?? {}
+      if (time && time.start && time.end) d.timeOverrides[k] = time
+      else delete d.timeOverrides[k]
+    })
+  }
+
   const setFortnightly = (on: boolean) =>
     mutate((d) => {
       d.fortnightly = on
@@ -118,6 +130,11 @@ export default function Timetable() {
       Object.keys(d.cells).forEach((k) => {
         if (k.includes(`__${id}__`)) delete d.cells[k]
       })
+      if (d.timeOverrides) {
+        Object.keys(d.timeOverrides).forEach((k) => {
+          if (k.includes(`__${id}__`)) delete d.timeOverrides![k]
+        })
+      }
     })
 
   const save = async () => {
@@ -328,6 +345,8 @@ export default function Timetable() {
                 {DAYS.map((_, day) => {
                   const cell = tt.cells[cellKey(viewWeek, p.id, day)]
                   const color = cell?.color ?? 'teal'
+                  const overridden = hasTimeOverride(tt, p.id, viewWeek, day)
+                  const eff = effectiveTime(tt, p, viewWeek, day)
                   return (
                     <td
                       key={day}
@@ -347,6 +366,11 @@ export default function Timetable() {
                             <p className="text-[11px] opacity-80">{cell.className}</p>
                           )}
                           {cell.room && <p className="text-[10px] opacity-70">Room {cell.room}</p>}
+                          {overridden && (
+                            <p className="mt-0.5 flex items-center gap-1 text-[10px] font-semibold opacity-90">
+                              <Clock size={9} /> {eff.start}–{eff.end}
+                            </p>
+                          )}
                         </button>
                       ) : editing ? (
                         <button
@@ -383,22 +407,32 @@ export default function Timetable() {
         </Link>
       </p>
 
-      {editCell && (
-        <CellEditor
-          initial={tt.cells[cellKey(editCell.week, editCell.periodId, editCell.day)]}
-          periodLabel={tt.periods.find((p) => p.id === editCell.periodId)?.label ?? ''}
-          dayLabel={`${tt.fortnightly ? `Week ${editCell.week} · ` : ''}${DAYS[editCell.day]}`}
-          onClose={() => setEditCell(null)}
-          onClear={() => {
-            setCell(editCell.week, editCell.periodId, editCell.day, null)
-            setEditCell(null)
-          }}
-          onSave={(cell) => {
-            setCell(editCell.week, editCell.periodId, editCell.day, cell)
-            setEditCell(null)
-          }}
-        />
-      )}
+      {editCell &&
+        (() => {
+          const period = tt.periods.find((p) => p.id === editCell.periodId)
+          if (!period) return null
+          const key = cellKey(editCell.week, editCell.periodId, editCell.day)
+          return (
+            <CellEditor
+              initial={tt.cells[key]}
+              periodLabel={period.label}
+              dayLabel={`${tt.fortnightly ? `Week ${editCell.week} · ` : ''}${DAYS[editCell.day]}`}
+              defaultTime={{ start: period.start, end: period.end }}
+              initialOverride={tt.timeOverrides?.[key]}
+              onClose={() => setEditCell(null)}
+              onClear={() => {
+                setCell(editCell.week, editCell.periodId, editCell.day, null)
+                setTimeOverride(editCell.week, editCell.periodId, editCell.day, null)
+                setEditCell(null)
+              }}
+              onSave={(cell, time) => {
+                setCell(editCell.week, editCell.periodId, editCell.day, cell)
+                setTimeOverride(editCell.week, editCell.periodId, editCell.day, time)
+                setEditCell(null)
+              }}
+            />
+          )
+        })()}
     </main>
   )
 }
@@ -409,6 +443,8 @@ function CellEditor({
   initial,
   periodLabel,
   dayLabel,
+  defaultTime,
+  initialOverride,
   onClose,
   onClear,
   onSave,
@@ -416,14 +452,19 @@ function CellEditor({
   initial?: ClassCell
   periodLabel: string
   dayLabel: string
+  defaultTime: TimeSlot
+  initialOverride?: TimeSlot
   onClose: () => void
   onClear: () => void
-  onSave: (cell: ClassCell) => void
+  onSave: (cell: ClassCell, time: TimeSlot | null) => void
 }) {
   const [subject, setSubject] = useState(initial?.subject ?? '')
   const [className, setClassName] = useState(initial?.className ?? '')
   const [room, setRoom] = useState(initial?.room ?? '')
   const [color, setColor] = useState<ClassColor>(initial?.color ?? 'teal')
+  const [customTime, setCustomTime] = useState(!!initialOverride)
+  const [start, setStart] = useState(initialOverride?.start ?? defaultTime.start)
+  const [end, setEnd] = useState(initialOverride?.end ?? defaultTime.end)
 
   const inputCls =
     'w-full rounded-xl border border-navy-200 bg-white px-4 py-2.5 text-navy-900 outline-none transition-colors placeholder:text-navy-300 focus:border-teal-400 focus:ring-4 focus:ring-teal-100'
@@ -448,7 +489,11 @@ function CellEditor({
           className="mt-5 space-y-4"
           onSubmit={(e) => {
             e.preventDefault()
-            onSave({ subject: subject.trim(), className: className.trim(), room: room.trim() || undefined, color })
+            const override =
+              customTime && start && end && (start !== defaultTime.start || end !== defaultTime.end)
+                ? { start, end }
+                : null
+            onSave({ subject: subject.trim(), className: className.trim(), room: room.trim() || undefined, color }, override)
           }}
         >
           <label className="block">
@@ -480,6 +525,48 @@ function CellEditor({
                 />
               ))}
             </div>
+          </div>
+
+          {/* per-day bell time */}
+          <div className="rounded-xl border border-navy-100 bg-cloud/60 p-3">
+            <label className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-navy-800">
+              <input
+                type="checkbox"
+                checked={customTime}
+                onChange={(e) => {
+                  setCustomTime(e.target.checked)
+                  if (e.target.checked) {
+                    setStart((s) => s || defaultTime.start)
+                    setEnd((en) => en || defaultTime.end)
+                  }
+                }}
+                className="h-4 w-4 rounded border-navy-300 text-teal-500 focus:ring-teal-300"
+              />
+              <Clock size={15} className="text-navy-400" /> Different bell time on this day
+            </label>
+            {customTime ? (
+              <div className="mt-3 flex items-center gap-2">
+                <input
+                  type="time"
+                  value={start}
+                  onChange={(e) => setStart(e.target.value)}
+                  className="rounded-lg border border-navy-200 px-3 py-2 text-sm text-navy-800 outline-none focus:border-teal-400"
+                />
+                <span className="text-sm text-navy-400">to</span>
+                <input
+                  type="time"
+                  value={end}
+                  onChange={(e) => setEnd(e.target.value)}
+                  className="rounded-lg border border-navy-200 px-3 py-2 text-sm text-navy-800 outline-none focus:border-teal-400"
+                />
+              </div>
+            ) : (
+              <p className="mt-1.5 pl-6 text-xs text-navy-400">
+                Uses the default {defaultTime.start || '—'}
+                {defaultTime.start && defaultTime.end ? '–' : ''}
+                {defaultTime.end || ''} for {periodLabel}.
+              </p>
+            )}
           </div>
 
           <div className="flex items-center justify-between gap-3 pt-2">

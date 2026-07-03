@@ -20,10 +20,20 @@ export interface ClassCell {
 export type WeekId = 'A' | 'B'
 export const WEEKS: WeekId[] = ['A', 'B']
 
+export interface TimeSlot {
+  start: string
+  end: string
+}
+
 export interface Timetable {
   periods: Period[]
   /** Keyed by `${week}__${periodId}__${dayIndex}`; week is 'A'|'B', dayIndex 0 (Mon) … 4 (Fri). */
   cells: Record<string, ClassCell>
+  /**
+   * Per-day bell-time exceptions, keyed the same way as cells. A period uses its
+   * default start/end unless an override exists for that specific week + day.
+   */
+  timeOverrides?: Record<string, TimeSlot>
   /** Whether the school runs a fortnightly (A/B week) timetable. */
   fortnightly?: boolean
   /** Monday (yyyy-mm-dd) of a reference calendar week, used to work out the current week. */
@@ -73,6 +83,17 @@ export const CLASS_COLORS: Record<ClassColor, { chip: string; dot: string; label
 
 export function cellKey(week: WeekId, periodId: string, dayIndex: number) {
   return `${week}__${periodId}__${dayIndex}`
+}
+
+/** The bell time for a period on a specific week + day: an override if set, else the default. */
+export function effectiveTime(tt: Timetable, period: Period, week: WeekId, day: number): TimeSlot {
+  const o = tt.timeOverrides?.[cellKey(week, period.id, day)]
+  return { start: o?.start ?? period.start, end: o?.end ?? period.end }
+}
+
+/** True when this week+day uses a bell time different from the period default. */
+export function hasTimeOverride(tt: Timetable, periodId: string, week: WeekId, day: number): boolean {
+  return Boolean(tt.timeOverrides?.[cellKey(week, periodId, day)])
 }
 
 /**
