@@ -45,19 +45,24 @@ to get login working locally and in production.
 
 **Build → Firestore Database → Create database** → start in **production mode** → choose a region.
 
-Then set security rules so each user can only read/write their own data
-(**Firestore → Rules**, paste this, Publish):
+Then set security rules so each user can only read/write their own data —
+including subcollections like their timetable (**Firestore → Rules**, paste this, Publish).
+The same rules live in [`firestore.rules`](firestore.rules) in this repo:
 
 ```
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /users/{userId} {
+    match /users/{userId}/{document=**} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
   }
 }
 ```
+
+> The `/{document=**}` wildcard is important — without it, rules don’t apply to
+> subcollections and saving your timetable (stored at `users/{uid}/timetable/main`)
+> would be denied.
 
 ## 6. Configure the app locally
 

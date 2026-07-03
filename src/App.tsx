@@ -1,10 +1,13 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import ProtectedRoute from './components/ProtectedRoute'
+import AppShell from './components/AppShell'
 import LandingPage from './pages/LandingPage'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
 import Dashboard from './pages/Dashboard'
+import Timetable from './pages/Timetable'
+import Settings from './pages/Settings'
 
 export default function App() {
   return (
@@ -18,10 +21,14 @@ export default function App() {
             path="/app"
             element={
               <ProtectedRoute>
-                <Dashboard />
+                <AppShell />
               </ProtectedRoute>
             }
-          />
+          >
+            <Route index element={<Dashboard />} />
+            <Route path="timetable" element={<Timetable />} />
+            <Route path="settings" element={<Settings />} />
+          </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>

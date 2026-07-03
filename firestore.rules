@@ -1,0 +1,12 @@
+rules_version = '2';
+
+// Project Daybook Firestore security rules.
+// Each user can only read and write their own document tree under /users/{uid},
+// including all subcollections (timetable, and future entries/programs/reports).
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}
