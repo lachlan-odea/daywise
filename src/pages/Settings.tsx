@@ -114,7 +114,7 @@ function Banner({ type, children }: { type: 'success' | 'error'; children: React
 
 export default function Settings() {
   const { user, providerId, updateDisplayName, changePassword, deleteAccount } = useAuth()
-  const { profile } = useProfile()
+  const { profile, loading: profileLoading } = useProfile()
   const navigate = useNavigate()
 
   const isPasswordUser = providerId === 'password'
@@ -131,14 +131,17 @@ export default function Settings() {
   const seeded = useRef(false)
 
   useEffect(() => {
-    if (!seeded.current && (profile || user)) {
+    // Wait until the Firestore profile has finished loading before seeding the
+    // form — otherwise school/role/phone (which live only in the profile) get
+    // seeded to empty before the saved values arrive.
+    if (!seeded.current && !profileLoading) {
       setName(profile?.displayName ?? user?.displayName ?? '')
       setSchool(profile?.school ?? '')
       setRole(profile?.role ?? '')
       setPhone(profile?.phone ?? '')
       seeded.current = true
     }
-  }, [profile, user])
+  }, [profile, profileLoading, user])
 
   const saveProfile = async (e: React.FormEvent) => {
     e.preventDefault()
