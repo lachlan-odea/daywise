@@ -19,6 +19,7 @@ import GlobalSearch from './GlobalSearch'
 import { useAuth } from '../context/AuthContext'
 import { useProfile } from '../hooks/useProfile'
 import { usePwaInstall } from '../hooks/usePwaInstall'
+import { PLAN_LABELS, type Plan } from '../lib/profile'
 
 const nav = [
   { to: '/app', label: 'Dashboard', icon: LayoutDashboard, end: true },
@@ -53,6 +54,7 @@ export default function AppShell() {
   const displayName = profile?.displayName || user?.displayName || user?.email?.split('@')[0] || 'Teacher'
   const firstName = displayName.split(' ')[0]
   const initials = initialsOf(displayName)
+  const plan = (profile?.plan ?? 'starter') as Plan
 
   // Close menus on route change
   useEffect(() => {
@@ -116,6 +118,17 @@ export default function AppShell() {
         )}
       </nav>
       <div className="space-y-1 border-t border-navy-100 p-4">
+        <Link
+          to="/app/settings"
+          className="mb-1 flex items-center justify-between rounded-xl bg-cloud px-3 py-2 text-xs font-bold text-navy-600"
+        >
+          <span>{PLAN_LABELS[plan]}</span>
+          {plan === 'starter' ? (
+            <span className="text-teal-600">Upgrade</span>
+          ) : (
+            <span className="text-teal-500">✓</span>
+          )}
+        </Link>
         {canInstall && (
           <button
             onClick={install}

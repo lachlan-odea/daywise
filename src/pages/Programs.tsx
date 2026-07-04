@@ -1,16 +1,20 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { BookOpen, Plus, Sparkles, Trash2, Loader2, FileText, GraduationCap } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
+import { BookOpen, Plus, Sparkles, Trash2, Loader2, FileText, GraduationCap, Lock, ArrowUpRight } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { subscribePrograms, deleteProgram, type Program } from '../lib/programs'
+import { useEntitlements } from '../hooks/useEntitlements'
 import ProgramImport from '../components/ProgramImport'
 
 export default function Programs() {
   const { user } = useAuth()
   const navigate = useNavigate()
+  const { maxPrograms, paid } = useEntitlements()
   const [programs, setPrograms] = useState<Program[] | null>(null)
   const [showImport, setShowImport] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+
+  const atLimit = !!programs && programs.length >= maxPrograms
 
   useEffect(() => {
     if (!user) return
@@ -41,11 +45,34 @@ export default function Programs() {
           <p className="mt-1 text-navy-500">Upload your programs and Curriculum Intelligence structures every lesson.</p>
         </div>
         {programs && programs.length > 0 && (
-          <button onClick={() => setShowImport(true)} className="btn-primary text-sm">
-            <Plus size={16} /> Upload program
-          </button>
+          atLimit ? (
+            <Link to="/#pricing" className="btn-primary text-sm">
+              <ArrowUpRight size={16} /> Upgrade for more
+            </Link>
+          ) : (
+            <button onClick={() => setShowImport(true)} className="btn-primary text-sm">
+              <Plus size={16} /> Upload program
+            </button>
+          )
         )}
       </div>
+
+      {atLimit && !paid && (
+        <div className="mt-6 flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-600">
+              <Lock size={17} />
+            </span>
+            <p className="text-sm text-amber-800">
+              You’ve reached the <b>Starter</b> limit of {maxPrograms} program{maxPrograms === 1 ? '' : 's'}. Upgrade to
+              Teacher Pro for <b>unlimited</b> programs.
+            </p>
+          </div>
+          <Link to="/#pricing" className="btn-navy shrink-0 text-sm">
+            See plans
+          </Link>
+        </div>
+      )}
 
       {loading ? (
         <div className="mt-10 flex items-center gap-3 text-navy-400">
