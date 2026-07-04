@@ -1,6 +1,11 @@
 import { initializeApp, type FirebaseApp } from 'firebase/app'
+import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check'
 import { getAuth, GoogleAuthProvider, OAuthProvider, type Auth } from 'firebase/auth'
 import { initializeFirestore, type Firestore } from 'firebase/firestore'
+
+// Public reCAPTCHA v3 site key for Firebase App Check (safe to expose in client code).
+const RECAPTCHA_SITE_KEY =
+  import.meta.env.VITE_RECAPTCHA_SITE_KEY || '6LcQDkQtAAAAAI21yvDJcoh8W04SvqQjaRzS52tZ'
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -23,6 +28,20 @@ let db: Firestore | undefined
 
 if (firebaseConfigured) {
   app = initializeApp(firebaseConfig)
+
+  // App Check protects Gemini / Firestore / Auth from abuse via reCAPTCHA v3.
+  // Failures here must never break the app, so guard it.
+  if (RECAPTCHA_SITE_KEY) {
+    try {
+      initializeAppCheck(app, {
+        provider: new ReCaptchaV3Provider(RECAPTCHA_SITE_KEY),
+        isTokenAutoRefreshEnabled: true,
+      })
+    } catch (e) {
+      console.warn('[Project Daybook] App Check could not be initialized.', e)
+    }
+  }
+
   auth = getAuth(app)
   // ignoreUndefinedProperties so writes with optional fields (e.g. a class with
   // no room) don't throw — Firestore otherwise rejects `undefined` values.
