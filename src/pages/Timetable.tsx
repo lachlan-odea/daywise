@@ -44,6 +44,8 @@ export default function Timetable() {
   const [editCell, setEditCell] = useState<{ week: WeekId; periodId: string; day: number } | null>(null)
   const [viewWeek, setViewWeek] = useState<WeekId>('A')
   const [showImport, setShowImport] = useState(false)
+  const dragSrc = useRef<{ periodId: string; day: number } | null>(null)
+  const [dropKey, setDropKey] = useState<string | null>(null)
 
   const dirtyRef = useRef(false)
   const baselineRef = useRef<Timetable | null>(null)
@@ -87,6 +89,21 @@ export default function Timetable() {
       const k = cellKey(week, periodId, day)
       if (cell && (cell.subject || cell.className)) d.cells[k] = cell
       else delete d.cells[k]
+    })
+  }
+
+  /** Moves a class to another slot (or swaps if the target is occupied) within the viewed week. */
+  const moveClass = (from: { periodId: string; day: number }, to: { periodId: string; day: number }) => {
+    if (from.periodId === to.periodId && from.day === to.day) return
+    mutate((d) => {
+      const fromKey = cellKey(viewWeek, from.periodId, from.day)
+      const toKey = cellKey(viewWeek, to.periodId, to.day)
+      const src = d.cells[fromKey]
+      if (!src) return
+      const dst = d.cells[toKey]
+      d.cells[toKey] = src
+      if (dst) d.cells[fromKey] = dst
+      else delete d.cells[fromKey]
     })
   }
 
@@ -191,7 +208,9 @@ export default function Timetable() {
           </p>
           <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-navy-900 sm:text-3xl">Your weekly timetable</h1>
           <p className="mt-1 text-navy-500">
-            {editing ? 'Tap any cell to add or edit a class.' : 'Your classes across the week, linked to your programs.'}
+            {editing
+              ? 'Tap a cell to add or edit — or drag a class to move it (drop on another class to swap).'
+              : 'Your classes across the week, linked to your programs.'}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -361,18 +380,48 @@ export default function Timetable() {
                   const color = cell?.color ?? 'teal'
                   const overridden = hasTimeOverride(tt, p.id, viewWeek, day)
                   const eff = effectiveTime(tt, p, viewWeek, day)
+                  const key = cellKey(viewWeek, p.id, day)
+                  const isDropTarget = dropKey === key
+                  const dropHandlers = editing
+                    ? {
+                        onDragOver: (e: React.DragEvent) => {
+                          if (!dragSrc.current) return
+                          e.preventDefault()
+                          if (dropKey !== key) setDropKey(key)
+                        },
+                        onDragLeave: () => setDropKey((k) => (k === key ? null : k)),
+                        onDrop: (e: React.DragEvent) => {
+                          e.preventDefault()
+                          if (dragSrc.current) moveClass(dragSrc.current, { periodId: p.id, day })
+                          dragSrc.current = null
+                          setDropKey(null)
+                        },
+                      }
+                    : {}
                   return (
                     <td
                       key={day}
-                      className={`border-b border-l border-navy-100 p-1.5 ${day === today ? 'bg-teal-50/40' : ''}`}
+                      {...dropHandlers}
+                      className={`border-b border-l border-navy-100 p-1.5 ${day === today ? 'bg-teal-50/40' : ''} ${
+                        isDropTarget ? 'bg-teal-100/70 ring-2 ring-inset ring-teal-400' : ''
+                      }`}
                     >
                       {cell ? (
                         <button
                           type="button"
                           disabled={!editing}
+                          draggable={editing}
+                          onDragStart={(e) => {
+                            dragSrc.current = { periodId: p.id, day }
+                            e.dataTransfer.effectAllowed = 'move'
+                          }}
+                          onDragEnd={() => {
+                            dragSrc.current = null
+                            setDropKey(null)
+                          }}
                           onClick={() => editing && setEditCell({ week: viewWeek, periodId: p.id, day })}
                           className={`w-full rounded-lg border px-2.5 py-2 text-left transition-transform ${CLASS_COLORS[color].chip} ${
-                            editing ? 'hover:-translate-y-0.5 hover:shadow-soft' : 'cursor-default'
+                            editing ? 'cursor-move hover:-translate-y-0.5 hover:shadow-soft' : 'cursor-default'
                           }`}
                         >
                           <p className="text-xs font-bold leading-tight">{cell.subject || cell.className}</p>
