@@ -13,6 +13,7 @@ import {
   Menu,
   X,
   Download,
+  Crown,
 } from 'lucide-react'
 import { LogoMark } from './Logo'
 import GlobalSearch from './GlobalSearch'
@@ -118,17 +119,23 @@ export default function AppShell() {
         )}
       </nav>
       <div className="space-y-1 border-t border-navy-100 p-4">
-        <Link
-          to="/app/settings"
-          className="mb-1 flex items-center justify-between rounded-xl bg-cloud px-3 py-2 text-xs font-bold text-navy-600"
-        >
-          <span>{PLAN_LABELS[plan]}</span>
-          {plan === 'starter' ? (
-            <span className="text-teal-600">Upgrade</span>
-          ) : (
-            <span className="text-teal-500">✓</span>
-          )}
-        </Link>
+        {plan === 'perpetual' ? (
+          <div className="mb-1 flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-teal-500 to-sky-500 px-3 py-2 text-xs font-bold text-white">
+            <Crown size={14} /> Founding Teacher
+          </div>
+        ) : (
+          <Link
+            to="/app/settings"
+            className="mb-1 flex items-center justify-between rounded-xl bg-cloud px-3 py-2 text-xs font-bold text-navy-600"
+          >
+            <span>{PLAN_LABELS[plan]}</span>
+            {plan === 'starter' ? (
+              <span className="text-teal-600">Upgrade</span>
+            ) : (
+              <span className="text-teal-500">✓</span>
+            )}
+          </Link>
+        )}
         {canInstall && (
           <button
             onClick={install}
