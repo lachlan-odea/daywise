@@ -74,9 +74,9 @@ export default function Dashboard() {
             </p>
           </div>
         </div>
-        <button className="btn-navy shrink-0 text-sm">
+        <Link to="/app/programs" className="btn-navy shrink-0 text-sm">
           <Plus size={16} /> Upload a program
-        </button>
+        </Link>
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-3">

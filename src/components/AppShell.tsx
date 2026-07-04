@@ -24,7 +24,7 @@ const nav = [
   { to: '/app', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/app/timetable', label: 'Timetable', icon: CalendarClock },
   { to: '/app/record', label: 'Record Lesson', icon: Mic, soon: true },
-  { to: '/app/programs', label: 'Programs', icon: BookOpen, soon: true },
+  { to: '/app/programs', label: 'Programs', icon: BookOpen },
   { to: '/app/history', label: 'History', icon: History, soon: true },
   { to: '/app/reports', label: 'Data & Reports', icon: BarChart3, soon: true },
   { to: '/app/settings', label: 'Settings', icon: SettingsIcon },
