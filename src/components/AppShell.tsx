@@ -9,13 +9,13 @@ import {
   BarChart3,
   Settings as SettingsIcon,
   LogOut,
-  Search,
   Bell,
   Menu,
   X,
   Download,
 } from 'lucide-react'
 import { LogoMark } from './Logo'
+import GlobalSearch from './GlobalSearch'
 import { useAuth } from '../context/AuthContext'
 import { useProfile } from '../hooks/useProfile'
 import { usePwaInstall } from '../hooks/usePwaInstall'
@@ -169,10 +169,7 @@ export default function AppShell() {
             >
               <Menu size={18} />
             </button>
-            <div className="hidden items-center gap-2 rounded-xl border border-navy-100 bg-cloud px-3 py-2 text-sm text-navy-400 sm:flex sm:w-72">
-              <Search size={16} />
-              <span>Search lessons, students, outcomes…</span>
-            </div>
+            <GlobalSearch />
           </div>
 
           <div className="flex items-center gap-3">

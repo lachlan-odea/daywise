@@ -1,4 +1,4 @@
-import { doc, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore'
+import { doc, getDoc, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore'
 import { db } from './firebase'
 
 export interface Period {
@@ -141,6 +141,13 @@ export function subscribeTimetable(uid: string, cb: (tt: Timetable | null) => vo
     (snap) => cb(snap.exists() ? migrateTimetable(snap.data() as Timetable) : null),
     () => cb(null),
   )
+}
+
+/** One-time fetch of the timetable (for search). */
+export async function getTimetableOnce(uid: string): Promise<Timetable | null> {
+  if (!db) return null
+  const snap = await getDoc(doc(db, 'users', uid, 'timetable', 'main'))
+  return snap.exists() ? migrateTimetable(snap.data() as Timetable) : null
 }
 
 export async function saveTimetable(uid: string, tt: Timetable) {

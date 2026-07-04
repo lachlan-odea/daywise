@@ -61,6 +61,13 @@ export function subscribePrograms(uid: string, cb: (programs: Program[]) => void
   )
 }
 
+/** One-time fetch of the program list (for search / pickers). */
+export async function getProgramList(uid: string): Promise<Program[]> {
+  if (!db) return []
+  const snap = await getDocs(query(collection(db, 'users', uid, 'programs'), orderBy('createdAt', 'desc')))
+  return snap.docs.map((d) => ({ id: d.id, ...(d.data() as Program) }))
+}
+
 export async function getProgram(uid: string, id: string): Promise<{ program: Program; lessons: Lesson[] } | null> {
   if (!db) return null
   const psnap = await getDoc(doc(db, 'users', uid, 'programs', id))
