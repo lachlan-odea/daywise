@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import {
   ArrowLeft,
   BookOpen,
@@ -106,8 +106,10 @@ export default function ProgramDetail() {
   const { id } = useParams<{ id: string }>()
   const { user } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const [data, setData] = useState<{ program: Program; lessons: Lesson[] } | null>(null)
   const [state, setState] = useState<'loading' | 'ready' | 'missing'>('loading')
+  const [highlightId, setHighlightId] = useState<string | null>(null)
 
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -131,6 +133,25 @@ export default function ProgramDetail() {
       active = false
     }
   }, [user, id])
+
+  // Deep-link: scroll to and briefly highlight a lesson from a #lesson-<id> anchor.
+  useEffect(() => {
+    if (state !== 'ready' || editing) return
+    const m = location.hash.match(/^#lesson-(.+)$/)
+    if (!m) return
+    const lid = m[1]
+    const scroll = setTimeout(() => {
+      const el = document.getElementById(`lesson-${lid}`)
+      if (!el) return
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      setHighlightId(lid)
+    }, 60)
+    const clear = setTimeout(() => setHighlightId(null), 2600)
+    return () => {
+      clearTimeout(scroll)
+      clearTimeout(clear)
+    }
+  }, [state, editing, location.hash, location.key])
 
   const startEdit = () => {
     if (!data) return
@@ -308,7 +329,13 @@ export default function ProgramDetail() {
       {/* lessons */}
       <div className="mt-8 space-y-4">
         {lessonsToShow.map((lesson, i) => (
-          <div key={editing ? i : (lesson.id ?? i)} className="card p-6">
+          <div
+            key={editing ? i : (lesson.id ?? i)}
+            id={!editing && lesson.id ? `lesson-${lesson.id}` : undefined}
+            className={`card scroll-mt-24 p-6 transition-shadow ${
+              !editing && highlightId && highlightId === lesson.id ? 'ring-2 ring-teal-400' : ''
+            }`}
+          >
             <div className="flex items-center gap-3">
               <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-navy-800 text-xs font-bold text-white">
                 {i + 1}

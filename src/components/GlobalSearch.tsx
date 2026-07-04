@@ -66,7 +66,7 @@ export default function GlobalSearch() {
               text: `${l.title} ${l.outcomes.join(' ')} ${l.keywords.join(' ')} ${l.learningIntentions.join(
                 ' ',
               )} ${l.activities.join(' ')} ${l.resources.join(' ')} ${l.assessment.join(' ')}`.toLowerCase(),
-              to: `/app/programs/${program.id}`,
+              to: `/app/programs/${program.id}${l.id ? `#lesson-${l.id}` : ''}`,
             })
           }
         }
