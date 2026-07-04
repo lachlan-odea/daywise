@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
-import { Upload, X, Loader2, Check, ArrowLeft, FileText, AlertTriangle, Wand2 } from 'lucide-react'
+import { Upload, X, Loader2, Check, ArrowLeft, FileText, AlertTriangle, Wand2, Sparkles } from 'lucide-react'
 import {
   buildFromPlan,
   detectLayout,
@@ -11,11 +11,97 @@ import {
   type SourceKind,
   type WeekPlan,
 } from '../lib/importTimetable'
-import { DAYS_SHORT, type Timetable } from '../lib/timetable'
+import { aiAvailable, aiExtractTimetable } from '../lib/aiTimetable'
+import { CLASS_COLORS, DAYS_SHORT, cellKey, effectiveTime, type ClassColor, type Timetable } from '../lib/timetable'
 
 const KIND_LABEL: Record<SourceKind, string> = { excel: 'Excel', word: 'Word', pdf: 'PDF' }
 
-/* mapping controls for a single week/source */
+function kindOf(name: string): SourceKind {
+  const n = name.toLowerCase()
+  if (n.endsWith('.pdf')) return 'pdf'
+  if (n.match(/\.xls|\.csv/)) return 'excel'
+  return 'word'
+}
+
+/* ---------------------- preview of a built timetable -------------------- */
+function ResultPreview({ tt }: { tt: Timetable }) {
+  const [week, setWeek] = useState<'A' | 'B'>('A')
+  return (
+    <div>
+      {tt.fortnightly && (
+        <div className="mb-3 inline-flex rounded-full border border-navy-100 bg-white p-1">
+          {(['A', 'B'] as const).map((w) => (
+            <button
+              key={w}
+              onClick={() => setWeek(w)}
+              className={`rounded-full px-4 py-1.5 text-sm font-bold transition-colors ${
+                week === w ? 'bg-navy-800 text-white' : 'text-navy-600 hover:bg-navy-50'
+              }`}
+            >
+              Week {w}
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="max-h-72 overflow-auto rounded-xl border border-navy-100">
+        <table className="min-w-[640px] border-collapse text-xs">
+          <thead>
+            <tr>
+              <th className="sticky left-0 bg-navy-50/70 p-2 text-left font-bold text-navy-400">Period</th>
+              {DAYS_SHORT.map((d) => (
+                <th key={d} className="border-b border-navy-100 p-2 font-bold text-navy-700">
+                  {d}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {tt.periods.map((p) => (
+              <tr key={p.id}>
+                <td className="sticky left-0 border-b border-r border-navy-100 bg-white p-2">
+                  <p className="font-bold text-navy-800">{p.label}</p>
+                  {(p.start || p.end) && (
+                    <p className="text-[10px] text-navy-400">
+                      {p.start}
+                      {p.start && p.end ? '–' : ''}
+                      {p.end}
+                    </p>
+                  )}
+                </td>
+                {DAYS_SHORT.map((_, di) => {
+                  const cell = tt.cells[cellKey(week, p.id, di)]
+                  const time = effectiveTime(tt, p, week, di)
+                  const overridden = time.start !== p.start || time.end !== p.end
+                  const color = (cell?.color ?? 'teal') as ClassColor
+                  return (
+                    <td key={di} className="border-b border-l border-navy-100 p-1 align-top">
+                      {cell ? (
+                        <div className={`rounded-md border px-1.5 py-1 ${CLASS_COLORS[color].chip}`}>
+                          <p className="font-bold leading-tight">{cell.subject || cell.className}</p>
+                          {cell.subject && cell.className && <p className="opacity-80">{cell.className}</p>}
+                          {cell.room && <p className="opacity-70">Rm {cell.room}</p>}
+                          {overridden && (
+                            <p className="opacity-80">
+                              {time.start}–{time.end}
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="min-h-[20px]" />
+                      )}
+                    </td>
+                  )
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+/* ---------------------- manual column-mapping panel --------------------- */
 function MappingPanel({
   sources,
   plan,
@@ -33,7 +119,6 @@ function MappingPanel({
     const head = grid[layout.headerRow]?.[ci]
     return `Col ${ci + 1}${head ? ` · ${head.slice(0, 14)}` : ''}`
   }
-
   const setLayout = (patch: Partial<typeof layout>) => onChange({ ...plan, layout: { ...layout, ...patch } })
   const setDayCol = (di: number, col: number | null) => {
     const dayCols = [...layout.dayCols]
@@ -41,13 +126,7 @@ function MappingPanel({
     setLayout({ dayCols })
   }
 
-  const ColSelect = ({
-    value,
-    onChangeVal,
-  }: {
-    value: number | null
-    onChangeVal: (v: number | null) => void
-  }) => (
+  const ColSelect = ({ value, onChangeVal }: { value: number | null; onChangeVal: (v: number | null) => void }) => (
     <select
       value={value ?? ''}
       onChange={(e) => onChangeVal(e.target.value === '' ? null : Number(e.target.value))}
@@ -83,7 +162,6 @@ function MappingPanel({
           </select>
         </label>
       )}
-
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="block">
           <span className="mb-1 block text-xs font-semibold text-navy-700">Header row (days)</span>
@@ -112,7 +190,6 @@ function MappingPanel({
           <ColSelect value={layout.endCol} onChangeVal={(v) => setLayout({ endCol: v })} />
         </label>
       </div>
-
       <p className="mb-2 mt-4 text-xs font-bold uppercase tracking-wide text-navy-400">Day columns</p>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         {DAYS_SHORT.map((d, di) => (
@@ -126,6 +203,7 @@ function MappingPanel({
   )
 }
 
+/* ------------------------------- modal ---------------------------------- */
 export default function TimetableImport({
   onClose,
   onImport,
@@ -133,47 +211,85 @@ export default function TimetableImport({
   onClose: () => void
   onImport: (tt: Timetable) => void
 }) {
-  const [step, setStep] = useState<'upload' | 'map'>('upload')
+  const [step, setStep] = useState<'upload' | 'review' | 'map'>('upload')
   const [busy, setBusy] = useState(false)
+  const [busyMsg, setBusyMsg] = useState('Reading your file…')
   const [error, setError] = useState('')
+  const [aiError, setAiError] = useState('')
   const [dragging, setDragging] = useState(false)
 
-  const [sources, setSources] = useState<NamedGrid[]>([])
-  const [kind, setKind] = useState<SourceKind>('excel')
-  const [note, setNote] = useState<string | undefined>()
   const [fileName, setFileName] = useState('')
+  const [kind, setKind] = useState<SourceKind>('excel')
+  const fileRef = useRef<File | null>(null)
+
+  // AI result
+  const [aiResult, setAiResult] = useState<Timetable | null>(null)
+
+  // manual mapping
+  const [sources, setSources] = useState<NamedGrid[]>([])
+  const [note, setNote] = useState<string | undefined>()
   const [plan, setPlan] = useState<ImportPlan | null>(null)
   const [weekTab, setWeekTab] = useState<'A' | 'B'>('A')
-
-  const inputRef = useRef<HTMLInputElement>(null)
 
   const built = useMemo(() => (plan ? buildFromPlan(sources, plan) : null), [sources, plan])
   const stats = built ? summarise(built) : { periods: 0, classes: 0, weekA: 0, weekB: 0 }
 
-  // Which source grid to show in the preview
-  const activePlan = !plan ? null : !plan.fortnightly ? plan.single : weekTab === 'A' ? plan.weekA : plan.weekB
-  const previewGrid = activePlan ? (sources[activePlan.sourceIndex]?.grid ?? []) : []
-  const previewMaxCols = previewGrid.reduce((m, r) => Math.max(m, r.length), 0)
+  const runManual = async (file: File) => {
+    const res = await extractGrid(file)
+    if (!res.sources.length) throw new Error('Could not read any content from that file.')
+    setSources(res.sources)
+    setNote(res.note)
+    setPlan(detectPlan(res.sources))
+    setWeekTab('A')
+    setStep('map')
+  }
 
   const handleFile = async (file: File) => {
     setError('')
+    setAiError('')
+    fileRef.current = file
+    setFileName(file.name)
+    setKind(kindOf(file.name))
     setBusy(true)
     try {
-      const res = await extractGrid(file)
-      if (!res.sources.length) throw new Error('Could not read any content from that file.')
-      setSources(res.sources)
-      setKind(res.kind)
-      setNote(res.note)
-      setFileName(file.name)
-      setPlan(detectPlan(res.sources))
-      setWeekTab('A')
-      setStep('map')
+      if (aiAvailable()) {
+        setBusyMsg('Reading your timetable with AI…')
+        try {
+          const tt = await aiExtractTimetable(file)
+          if (summarise(tt).classes === 0) throw new Error('AI found no classes')
+          setAiResult(tt)
+          setStep('review')
+          return
+        } catch {
+          setAiError('AI extraction wasn’t available for this file — you can map the columns manually below.')
+        }
+      }
+      setBusyMsg('Reading your file…')
+      await runManual(file)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not read that file. Please try another.')
     } finally {
       setBusy(false)
     }
   }
+
+  const switchToManual = async () => {
+    if (!fileRef.current) return
+    setBusy(true)
+    setBusyMsg('Reading your file…')
+    try {
+      await runManual(fileRef.current)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not read that file.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  // preview grid for the manual step
+  const activePlan = !plan ? null : !plan.fortnightly ? plan.single : weekTab === 'A' ? plan.weekA : plan.weekB
+  const previewGrid = activePlan ? (sources[activePlan.sourceIndex]?.grid ?? []) : []
+  const previewMaxCols = previewGrid.reduce((m, r) => Math.max(m, r.length), 0)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -202,7 +318,8 @@ export default function TimetableImport({
         </div>
 
         <div className="flex-1 overflow-y-auto p-6">
-          {step === 'upload' ? (
+          {/* UPLOAD */}
+          {step === 'upload' && (
             <>
               <label
                 onDragOver={(e) => {
@@ -221,7 +338,6 @@ export default function TimetableImport({
                 }`}
               >
                 <input
-                  ref={inputRef}
                   type="file"
                   accept=".pdf,.doc,.docx,.xls,.xlsx,.csv"
                   className="hidden"
@@ -233,7 +349,7 @@ export default function TimetableImport({
                 {busy ? (
                   <>
                     <Loader2 size={30} className="animate-spin text-teal-500" />
-                    <p className="mt-3 text-sm font-semibold text-navy-700">Reading your file…</p>
+                    <p className="mt-3 text-sm font-semibold text-navy-700">{busyMsg}</p>
                   </>
                 ) : (
                   <>
@@ -242,6 +358,11 @@ export default function TimetableImport({
                     </span>
                     <p className="mt-4 text-base font-bold text-navy-900">Drop your timetable here</p>
                     <p className="mt-1 text-sm text-navy-500">or click to browse — PDF, Word (.docx) or Excel (.xlsx)</p>
+                    {aiAvailable() && (
+                      <p className="mt-3 flex items-center gap-1.5 text-xs font-semibold text-teal-600">
+                        <Sparkles size={13} /> AI will read it for you
+                      </p>
+                    )}
                   </>
                 )}
               </label>
@@ -251,111 +372,143 @@ export default function TimetableImport({
                 </div>
               )}
               <p className="mt-4 text-center text-xs text-navy-400">
-                Your file is read privately in your browser — it is never uploaded to a server.
+                Your file is read privately in your browser — the file itself is never stored.
               </p>
             </>
-          ) : (
-            plan && (
-              <>
-                {note && (
-                  <div className="mb-4 flex items-start gap-2 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-700">
-                    <AlertTriangle size={16} className="mt-0.5 shrink-0" /> {note}
-                  </div>
-                )}
+          )}
 
-                {/* fortnightly toggle */}
-                <label className="mb-4 inline-flex cursor-pointer items-center gap-2 text-sm font-semibold text-navy-800">
-                  <input
-                    type="checkbox"
-                    checked={plan.fortnightly}
-                    onChange={(e) => setPlan({ ...plan, fortnightly: e.target.checked })}
-                    className="h-4 w-4 rounded border-navy-300 text-teal-500 focus:ring-teal-300"
-                  />
-                  This is a fortnightly (Week A / Week B) timetable
-                </label>
-
-                {/* week tabs when fortnightly */}
-                {plan.fortnightly && (
-                  <div className="mb-3 inline-flex rounded-full border border-navy-100 bg-white p-1">
-                    {(['A', 'B'] as const).map((w) => (
-                      <button
-                        key={w}
-                        onClick={() => setWeekTab(w)}
-                        className={`rounded-full px-4 py-1.5 text-sm font-bold transition-colors ${
-                          weekTab === w ? 'bg-navy-800 text-white' : 'text-navy-600 hover:bg-navy-50'
-                        }`}
-                      >
-                        Week {w}
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {/* mapping */}
-                {!plan.fortnightly ? (
-                  <MappingPanel sources={sources} plan={plan.single} onChange={(single) => setPlan({ ...plan, single })} />
-                ) : weekTab === 'A' ? (
-                  <MappingPanel sources={sources} plan={plan.weekA} onChange={(weekA) => setPlan({ ...plan, weekA })} />
+          {/* AI REVIEW */}
+          {step === 'review' && aiResult && (
+            <>
+              <div className="mb-4 flex items-center gap-2 rounded-xl bg-teal-50 px-4 py-3 text-sm text-teal-800">
+                <Sparkles size={16} />
+                AI read your timetable — <b>{summarise(aiResult).periods}</b> periods,{' '}
+                {aiResult.fortnightly ? (
+                  <>
+                    <b>{summarise(aiResult).weekA}</b> classes in Week A, <b>{summarise(aiResult).weekB}</b> in Week B.
+                  </>
                 ) : (
-                  <MappingPanel sources={sources} plan={plan.weekB} onChange={(weekB) => setPlan({ ...plan, weekB })} />
+                  <>
+                    <b>{summarise(aiResult).classes}</b> classes.
+                  </>
                 )}
+              </div>
+              <ResultPreview tt={aiResult} />
+              <p className="mt-3 text-xs text-navy-400">
+                Check it looks right — you can fine-tune everything after importing. Not quite right?{' '}
+                <button onClick={switchToManual} className="font-semibold text-teal-600 hover:text-teal-700">
+                  Map the columns manually
+                </button>
+                .
+              </p>
+            </>
+          )}
 
-                {/* result summary */}
-                <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl bg-teal-50 px-4 py-3 text-sm text-teal-800">
-                  <span className="flex items-center gap-1.5">
-                    <Check size={16} /> <b>{stats.periods}</b> periods
-                  </span>
-                  {plan.fortnightly ? (
-                    <>
-                      <span>
-                        Week A: <b>{stats.weekA}</b> classes
-                      </span>
-                      <span>
-                        Week B: <b>{stats.weekB}</b> classes
-                      </span>
-                    </>
-                  ) : (
+          {/* MANUAL MAP */}
+          {step === 'map' && plan && (
+            <>
+              {aiError && (
+                <div className="mb-4 flex items-start gap-2 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-700">
+                  <AlertTriangle size={16} className="mt-0.5 shrink-0" /> {aiError}
+                </div>
+              )}
+              {note && !aiError && (
+                <div className="mb-4 flex items-start gap-2 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-700">
+                  <AlertTriangle size={16} className="mt-0.5 shrink-0" /> {note}
+                </div>
+              )}
+
+              <label className="mb-4 inline-flex cursor-pointer items-center gap-2 text-sm font-semibold text-navy-800">
+                <input
+                  type="checkbox"
+                  checked={plan.fortnightly}
+                  onChange={(e) => setPlan({ ...plan, fortnightly: e.target.checked })}
+                  className="h-4 w-4 rounded border-navy-300 text-teal-500 focus:ring-teal-300"
+                />
+                This is a fortnightly (Week A / Week B) timetable
+              </label>
+
+              {plan.fortnightly && (
+                <div className="mb-3 inline-flex rounded-full border border-navy-100 bg-white p-1">
+                  {(['A', 'B'] as const).map((w) => (
+                    <button
+                      key={w}
+                      onClick={() => setWeekTab(w)}
+                      className={`rounded-full px-4 py-1.5 text-sm font-bold transition-colors ${
+                        weekTab === w ? 'bg-navy-800 text-white' : 'text-navy-600 hover:bg-navy-50'
+                      }`}
+                    >
+                      Week {w}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {!plan.fortnightly ? (
+                <MappingPanel sources={sources} plan={plan.single} onChange={(single) => setPlan({ ...plan, single })} />
+              ) : weekTab === 'A' ? (
+                <MappingPanel sources={sources} plan={plan.weekA} onChange={(weekA) => setPlan({ ...plan, weekA })} />
+              ) : (
+                <MappingPanel sources={sources} plan={plan.weekB} onChange={(weekB) => setPlan({ ...plan, weekB })} />
+              )}
+
+              <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl bg-teal-50 px-4 py-3 text-sm text-teal-800">
+                <span className="flex items-center gap-1.5">
+                  <Check size={16} /> <b>{stats.periods}</b> periods
+                </span>
+                {plan.fortnightly ? (
+                  <>
                     <span>
-                      <b>{stats.classes}</b> classes
+                      Week A: <b>{stats.weekA}</b>
                     </span>
-                  )}
-                  {stats.classes === 0 && <span>· try adjusting the mapping above</span>}
-                </div>
-
-                {/* raw grid preview */}
-                <p className="mb-2 mt-5 text-xs font-bold uppercase tracking-wide text-navy-400">
-                  File preview{plan.fortnightly ? ` · Week ${weekTab} source` : ''}
-                </p>
-                <div className="max-h-56 overflow-auto rounded-xl border border-navy-100">
-                  <table className="min-w-full border-collapse text-xs">
-                    <tbody>
-                      {previewGrid.slice(0, 12).map((row, r) => (
-                        <tr
-                          key={r}
-                          className={
-                            activePlan && r === activePlan.layout.headerRow ? 'bg-teal-50' : r % 2 ? 'bg-cloud/50' : ''
-                          }
-                        >
-                          <td className="border border-navy-100 px-2 py-1 font-bold text-navy-300">{r + 1}</td>
-                          {Array.from({ length: previewMaxCols }, (_, c) => (
-                            <td key={c} className="max-w-[140px] truncate border border-navy-100 px-2 py-1 text-navy-700">
-                              {row[c] ?? ''}
-                            </td>
-                          ))}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                {previewGrid.length > 12 && (
-                  <p className="mt-1 text-xs text-navy-400">Showing first 12 of {previewGrid.length} rows.</p>
+                    <span>
+                      Week B: <b>{stats.weekB}</b>
+                    </span>
+                  </>
+                ) : (
+                  <span>
+                    <b>{stats.classes}</b> classes
+                  </span>
                 )}
-              </>
-            )
+              </div>
+
+              <p className="mb-2 mt-5 text-xs font-bold uppercase tracking-wide text-navy-400">
+                File preview{plan.fortnightly ? ` · Week ${weekTab} source` : ''}
+              </p>
+              <div className="max-h-56 overflow-auto rounded-xl border border-navy-100">
+                <table className="min-w-full border-collapse text-xs">
+                  <tbody>
+                    {previewGrid.slice(0, 12).map((row, r) => (
+                      <tr
+                        key={r}
+                        className={activePlan && r === activePlan.layout.headerRow ? 'bg-teal-50' : r % 2 ? 'bg-cloud/50' : ''}
+                      >
+                        <td className="border border-navy-100 px-2 py-1 font-bold text-navy-300">{r + 1}</td>
+                        {Array.from({ length: previewMaxCols }, (_, c) => (
+                          <td key={c} className="max-w-[140px] truncate border border-navy-100 px-2 py-1 text-navy-700">
+                            {row[c] ?? ''}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </div>
 
         {/* footer */}
+        {step === 'review' && aiResult && (
+          <div className="flex items-center justify-between border-t border-navy-100 px-6 py-4">
+            <button onClick={() => setStep('upload')} className="btn-ghost text-sm">
+              <ArrowLeft size={16} /> Choose another file
+            </button>
+            <button onClick={() => onImport(aiResult)} className="btn-primary text-sm">
+              <FileText size={16} /> Import {summarise(aiResult).classes} classes
+            </button>
+          </div>
+        )}
         {step === 'map' && (
           <div className="flex items-center justify-between border-t border-navy-100 px-6 py-4">
             <button onClick={() => setStep('upload')} className="btn-ghost text-sm">
