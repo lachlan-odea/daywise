@@ -1,7 +1,7 @@
 import { doc, onSnapshot, serverTimestamp, setDoc, type Timestamp } from 'firebase/firestore'
 import { db } from './firebase'
 
-export type Plan = 'starter' | 'pro' | 'school'
+export type Plan = 'starter' | 'pro' | 'school' | 'perpetual'
 
 export interface UserProfile {
   uid: string
@@ -46,6 +46,7 @@ export const PLAN_LABELS: Record<Plan, string> = {
   starter: 'Starter',
   pro: 'Teacher Pro',
   school: 'Faculty & School',
+  perpetual: 'Founding Teacher',
 }
 
 export const ROLE_OPTIONS = [

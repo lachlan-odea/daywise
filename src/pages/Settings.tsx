@@ -11,6 +11,7 @@ import {
   Sparkles,
   Building2,
   Mail,
+  Crown,
   type LucideIcon,
 } from 'lucide-react'
 import { useAuth, authErrorMessage } from '../context/AuthContext'
@@ -33,6 +34,16 @@ const PLAN_META: Record<Plan, { price: string; blurb: string; features: string[]
     price: 'Custom',
     blurb: 'For faculties, executives and whole schools.',
     features: ['Everything in Pro', 'Whole-school reporting', 'Shared programs', 'Admin controls & SSO'],
+  },
+  perpetual: {
+    price: 'Free forever',
+    blurb: 'Complimentary lifetime access — thank you for helping shape Project Daybook.',
+    features: [
+      'Everything in Teacher Pro',
+      'Unlimited programs & classes',
+      'Full Curriculum Intelligence',
+      'No billing, ever',
+    ],
   },
 }
 
@@ -346,18 +357,32 @@ export default function Settings() {
 
           {/* SUBSCRIPTION */}
           <SectionCard id="subscription" icon={CreditCard} title="Subscription" desc="Your current plan and billing.">
-            <div className="rounded-2xl border border-navy-100 bg-gradient-to-br from-cloud to-white p-5">
+            <div
+              className={`rounded-2xl border p-5 ${
+                plan === 'perpetual'
+                  ? 'border-teal-300 bg-gradient-to-br from-teal-50 to-white'
+                  : 'border-navy-100 bg-gradient-to-br from-cloud to-white'
+              }`}
+            >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="flex items-center gap-1.5 rounded-full bg-teal-500 px-3 py-1 text-xs font-bold text-white">
-                      <Sparkles size={12} /> {PLAN_LABELS[plan]}
+                    <span
+                      className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold text-white ${
+                        plan === 'perpetual' ? 'bg-gradient-to-r from-teal-500 to-sky-500' : 'bg-teal-500'
+                      }`}
+                    >
+                      {plan === 'perpetual' ? <Crown size={12} /> : <Sparkles size={12} />} {PLAN_LABELS[plan]}
                     </span>
                     <span className="text-sm font-bold text-navy-900">{planMeta.price}</span>
                   </div>
                   <p className="mt-2 text-sm text-navy-500">{planMeta.blurb}</p>
                 </div>
-                {plan === 'starter' ? (
+                {plan === 'perpetual' ? (
+                  <span className="flex items-center gap-1.5 rounded-full border border-teal-200 bg-white px-3 py-1.5 text-xs font-bold text-teal-700">
+                    <Check size={13} strokeWidth={3} /> Complimentary
+                  </span>
+                ) : plan === 'starter' ? (
                   <Link to="/#pricing" className="btn-primary text-sm">
                     Upgrade to Pro
                   </Link>
@@ -378,13 +403,20 @@ export default function Settings() {
                 ))}
               </ul>
             </div>
-            <p className="mt-3 text-xs text-navy-400">
-              Billing integration is coming soon. Need to change your plan now?{' '}
-              <Link to="/#pricing" className="font-semibold text-teal-600 hover:text-teal-700">
-                See all plans
-              </Link>
-              .
-            </p>
+            {plan === 'perpetual' ? (
+              <p className="mt-3 text-xs text-navy-400">
+                You have complimentary lifetime access — you’ll never be charged. Thank you for helping test Project
+                Daybook. 💚
+              </p>
+            ) : (
+              <p className="mt-3 text-xs text-navy-400">
+                Billing integration is coming soon. Need to change your plan now?{' '}
+                <Link to="/#pricing" className="font-semibold text-teal-600 hover:text-teal-700">
+                  See all plans
+                </Link>
+                .
+              </p>
+            )}
           </SectionCard>
 
           {/* DANGER ZONE */}

@@ -105,3 +105,16 @@ Push to `main` (or re-run the workflow) and the live site will have working auth
   enforced by your Authentication settings and Firestore rules, not by hiding these values.
 - Until config is provided, the login/signup pages render but show a "Firebase isn't configured
   yet" message when you try to authenticate — so the site never crashes.
+
+## Granting complimentary / perpetual access (pilot teachers)
+
+To give a teacher free lifetime access (shown in the app as **"Founding Teacher · Free forever"**):
+
+1. Firebase console → **Firestore Database** → `users` collection.
+2. Open the teacher's document (its ID is their Firebase Auth `uid` — you can find it under
+   **Authentication → Users**).
+3. Set the **`plan`** field to `perpetual` (string). Add the field if it isn't there.
+
+That's it — next time they open **Settings → Subscription** they'll see the complimentary plan with
+no upgrade or billing prompts. Sign-in never overwrites `plan`, so it sticks. Valid values are
+`starter`, `pro`, `school`, `perpetual`.
