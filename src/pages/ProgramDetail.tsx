@@ -34,6 +34,40 @@ const inputCls =
 const smallInput =
   'w-full rounded-lg border border-navy-200 bg-white px-3 py-1.5 text-sm text-navy-800 outline-none focus:border-teal-400'
 
+const URL_RE = /(https?:\/\/[^\s]+)/g
+
+/** Renders text with any URLs turned into clickable links. */
+function linkify(text: string): React.ReactNode[] {
+  const parts: React.ReactNode[] = []
+  let last = 0
+  for (const m of text.matchAll(URL_RE)) {
+    const offset = m.index ?? 0
+    if (offset > last) parts.push(text.slice(last, offset))
+    let url = m[0]
+    let trail = ''
+    const t = url.match(/[).,;\]]+$/)
+    if (t) {
+      trail = t[0]
+      url = url.slice(0, -trail.length)
+    }
+    parts.push(
+      <a
+        key={offset}
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="break-all font-medium text-teal-600 underline decoration-teal-300 underline-offset-2 hover:text-teal-700"
+      >
+        {url}
+      </a>,
+    )
+    if (trail) parts.push(trail)
+    last = offset + m[0].length
+  }
+  if (last < text.length) parts.push(text.slice(last))
+  return parts
+}
+
 const emptyLesson = (): Lesson => ({
   order: 0,
   title: '',
@@ -402,7 +436,7 @@ export default function ProgramDetail() {
                         {items.map((it, j) => (
                           <li key={j} className="flex gap-2 text-sm text-navy-700">
                             <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-teal-400" />
-                            {it}
+                            <span className="min-w-0 break-words">{linkify(it)}</span>
                           </li>
                         ))}
                       </ul>
