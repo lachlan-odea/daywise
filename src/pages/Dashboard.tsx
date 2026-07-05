@@ -13,6 +13,7 @@ import {
   type Timetable,
 } from '../lib/timetable'
 import { subscribePrograms, type Program } from '../lib/programs'
+import { subscribeEntries, type LessonEntry } from '../lib/entries'
 
 function todayIndex() {
   const d = new Date().getDay()
@@ -24,6 +25,7 @@ export default function Dashboard() {
   const { profile } = useProfile()
   const [tt, setTt] = useState<Timetable | null>(null)
   const [programs, setPrograms] = useState<Program[] | null>(null)
+  const [entries, setEntries] = useState<LessonEntry[] | null>(null)
 
   const displayName = profile?.displayName || user?.displayName || user?.email?.split('@')[0] || 'Teacher'
   const firstName = displayName.split(' ')[0]
@@ -43,6 +45,11 @@ export default function Dashboard() {
     return subscribePrograms(user.uid, setPrograms)
   }, [user])
 
+  useEffect(() => {
+    if (!user) return
+    return subscribeEntries(user.uid, setEntries)
+  }, [user])
+
   // Today's classes drawn from the saved timetable, for the current (A/B) week.
   const week = currentWeek(tt)
   const todaysClasses =
@@ -53,6 +60,16 @@ export default function Dashboard() {
       : []
 
   const hasTimetable = tt ? Object.keys(tt.cells).length > 0 : false
+  const lastNextSteps = entries?.[0]?.evidence?.nextSteps ?? []
+  const evidenceCount =
+    entries?.filter(
+      (e) =>
+        e.evidence &&
+        (e.evidence.annotations ||
+          e.evidence.assessmentEvidence ||
+          e.evidence.reflection ||
+          e.evidence.nextSteps?.length),
+    ).length ?? 0
 
   return (
     <main className="mx-auto max-w-6xl px-5 py-8 sm:px-8">
@@ -63,9 +80,9 @@ export default function Dashboard() {
             Good day, {firstName} 👋
           </h1>
         </div>
-        <button className="btn-primary text-sm">
+        <Link to="/app/record" className="btn-primary text-sm">
           <Mic size={17} /> Record a lesson
-        </button>
+        </Link>
       </div>
 
       {/* Setup banner — only until the first program is uploaded */}
@@ -170,17 +187,31 @@ export default function Dashboard() {
               <Sparkles size={16} />
               <h2 className="text-sm font-bold text-navy-800">Suggested next</h2>
             </div>
-            <p className="mt-2 text-sm text-navy-500">
-              Record a lesson and Daybook will suggest what to teach next, based on your programs.
-            </p>
+            {lastNextSteps.length > 0 ? (
+              <>
+                <p className="mt-2 text-xs text-navy-400">From your last recorded lesson:</p>
+                <ul className="mt-2 space-y-1.5">
+                  {lastNextSteps.slice(0, 3).map((s, i) => (
+                    <li key={i} className="flex gap-2 text-sm text-navy-600">
+                      <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-teal-400" />
+                      {s}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ) : (
+              <p className="mt-2 text-sm text-navy-500">
+                Record a lesson and Daybook will suggest what to teach next, based on your programs.
+              </p>
+            )}
           </div>
 
           <div className="card p-5">
             <h2 className="text-sm font-bold text-navy-800">This week</h2>
             <div className="mt-3 space-y-3">
               {[
-                { l: 'Lessons recorded', v: '0' },
-                { l: 'Evidence items', v: '0' },
+                { l: 'Lessons recorded', v: String(entries?.length ?? 0) },
+                { l: 'Evidence items', v: String(evidenceCount) },
                 { l: 'Classes timetabled', v: String(tt ? Object.keys(tt.cells).length : 0) },
               ].map((s) => (
                 <div key={s.l} className="flex items-center justify-between">
