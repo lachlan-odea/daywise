@@ -125,10 +125,25 @@ export default function Record() {
   const [outcomes, setOutcomes] = useState<string[]>([])
 
   const candidatesRef = useRef<Candidate[] | null>(null)
+  const voiceBaseRef = useRef('')
 
-  const { supported, listening, interim, toggle } = useSpeechRecognition((chunk) =>
-    setNote((n) => (n ? `${n} ${chunk}` : chunk).replace(/\s+/g, ' ')),
-  )
+  const { supported, listening, transcript, interim, start, stop } = useSpeechRecognition()
+
+  // Merge the recognised transcript onto the note captured when recording began.
+  useEffect(() => {
+    if (!transcript) return
+    const base = voiceBaseRef.current
+    setNote((base ? `${base} ` : '') + transcript)
+  }, [transcript])
+
+  const toggleVoice = () => {
+    if (listening) {
+      stop()
+      return
+    }
+    voiceBaseRef.current = note.trim()
+    start()
+  }
 
   useEffect(() => {
     if (!user) return
@@ -295,7 +310,7 @@ export default function Record() {
               <span className="text-sm font-semibold text-navy-800">What happened?</span>
               {supported && (
                 <button
-                  onClick={toggle}
+                  onClick={toggleVoice}
                   className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition-colors ${
                     listening ? 'bg-red-500 text-white' : 'bg-teal-500 text-white hover:bg-teal-600'
                   }`}
