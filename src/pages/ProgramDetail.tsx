@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -70,6 +70,7 @@ function linkify(text: string): React.ReactNode[] {
 
 const emptyLesson = (): Lesson => ({
   order: 0,
+  term: 0,
   title: '',
   outcomes: [],
   learningIntentions: [],
@@ -91,6 +92,17 @@ const cloneLessons = (lessons: Lesson[]): Lesson[] =>
     keywords: [...l.keywords],
     assessment: [...l.assessment],
   }))
+
+function TermHeading({ term }: { term: number }) {
+  return (
+    <div className="flex items-center gap-3">
+      <span className="flex items-center gap-1.5 rounded-full bg-navy-800 px-3 py-1 text-xs font-bold text-white">
+        {term >= 1 ? `Term ${term}` : 'Additional lessons'}
+      </span>
+      <span className="h-px flex-1 bg-navy-100" />
+    </div>
+  )
+}
 
 function SectionEditor({
   label,
@@ -267,7 +279,12 @@ export default function ProgramDetail() {
   }
 
   const { program, lessons } = data
-  const lessonsToShow = editing ? draft : lessons
+  const hasTerms = !editing && lessons.some((l) => (l.term ?? 0) >= 1)
+  const lessonsToShow = editing
+    ? draft
+    : hasTerms
+      ? [...lessons].sort((a, b) => (a.term || 99) - (b.term || 99) || a.order - b.order)
+      : lessons
 
   return (
     <main className="mx-auto max-w-5xl px-5 py-8 sm:px-8">
@@ -362,14 +379,17 @@ export default function ProgramDetail() {
 
       {/* lessons */}
       <div className="mt-8 space-y-4">
-        {lessonsToShow.map((lesson, i) => (
-          <div
-            key={editing ? i : (lesson.id ?? i)}
-            id={!editing && lesson.id ? `lesson-${lesson.id}` : undefined}
-            className={`card scroll-mt-24 p-6 transition-shadow ${
-              !editing && highlightId && highlightId === lesson.id ? 'ring-2 ring-teal-400' : ''
-            }`}
-          >
+        {lessonsToShow.map((lesson, i) => {
+          const showHeading = hasTerms && (i === 0 || (lessonsToShow[i - 1].term ?? 0) !== (lesson.term ?? 0))
+          return (
+            <Fragment key={editing ? i : (lesson.id ?? i)}>
+              {showHeading && <TermHeading term={lesson.term ?? 0} />}
+              <div
+                id={!editing && lesson.id ? `lesson-${lesson.id}` : undefined}
+                className={`card scroll-mt-24 p-6 transition-shadow ${
+                  !editing && highlightId && highlightId === lesson.id ? 'ring-2 ring-teal-400' : ''
+                }`}
+              >
             <div className="flex items-center gap-3">
               <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-navy-800 text-xs font-bold text-white">
                 {i + 1}
@@ -382,6 +402,19 @@ export default function ProgramDetail() {
                     className={smallInput + ' flex-1 font-bold'}
                     placeholder="Lesson title"
                   />
+                  <select
+                    value={lesson.term || ''}
+                    onChange={(e) => setLesson(i, { term: e.target.value ? Number(e.target.value) : 0 })}
+                    className="shrink-0 rounded-lg border border-navy-200 px-2 py-1.5 text-xs font-semibold text-navy-700 outline-none focus:border-teal-400"
+                    title="Term"
+                  >
+                    <option value="">No term</option>
+                    {[1, 2, 3, 4].map((t) => (
+                      <option key={t} value={t}>
+                        Term {t}
+                      </option>
+                    ))}
+                  </select>
                   <div className="flex items-center gap-0.5">
                     <button
                       onClick={() => moveLesson(i, -1)}
@@ -445,8 +478,10 @@ export default function ProgramDetail() {
                 )
               })}
             </div>
-          </div>
-        ))}
+              </div>
+            </Fragment>
+              )
+            })}
       </div>
 
       {editing && (

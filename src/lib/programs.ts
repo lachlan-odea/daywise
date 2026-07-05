@@ -16,6 +16,8 @@ import { db } from './firebase'
 export interface Lesson {
   id?: string
   order: number
+  /** School term (1–4) when the program is organised by term; 0 = unassigned. */
+  term: number
   title: string
   outcomes: string[]
   learningIntentions: string[]
@@ -82,6 +84,7 @@ export async function getProgram(uid: string, id: string): Promise<{ program: Pr
 function serializeLesson(l: Lesson, i: number) {
   return {
     order: i,
+    term: l.term ?? 0,
     title: l.title ?? '',
     outcomes: l.outcomes ?? [],
     learningIntentions: l.learningIntentions ?? [],

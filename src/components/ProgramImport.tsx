@@ -177,6 +177,7 @@ export default function ProgramImport({
                         <BookOpen size={14} className="text-teal-600" /> {i + 1}. {l.title}
                       </p>
                       <div className="mt-1.5 flex flex-wrap gap-1.5">
+                        {l.term > 0 && <Tag>Term {l.term}</Tag>}
                         {l.outcomes.length > 0 && <Tag>{l.outcomes.length} outcomes</Tag>}
                         {l.activities.length > 0 && <Tag>{l.activities.length} activities</Tag>}
                         {l.resources.length > 0 && <Tag>{l.resources.length} resources</Tag>}

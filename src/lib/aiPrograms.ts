@@ -18,6 +18,7 @@ Return JSON with:
 - stage: the stage or year level if stated (e.g. "Stage 4", "Year 9"), else "".
 - description: one or two sentences summarising the program, else "".
 - lessons: the ordered list of lessons/units/sequences in the document. For each lesson extract:
+    - term: if the program is organised by term or covers a full year, the school term number (1, 2, 3 or 4) this lesson belongs to. Omit (or 0) if the document is not organised by term.
     - title: the lesson/topic title.
     - outcomes: syllabus outcome codes and/or statements (e.g. "SC4-10PW").
     - learningIntentions: the learning intentions / goals.
@@ -45,6 +46,7 @@ async function getModel() {
       lessons: Schema.array({
         items: Schema.object({
           properties: {
+            term: Schema.number(),
             title: Schema.string(),
             outcomes: strArray(),
             learningIntentions: strArray(),
@@ -55,6 +57,7 @@ async function getModel() {
             assessment: strArray(),
           },
           optionalProperties: [
+            'term',
             'outcomes',
             'learningIntentions',
             'successCriteria',
@@ -76,6 +79,7 @@ async function getModel() {
 }
 
 interface AILesson {
+  term?: number
   title?: string
   outcomes?: string[]
   learningIntentions?: string[]
@@ -108,6 +112,7 @@ export async function aiExtractProgram(file: File): Promise<ExtractedProgram> {
   }
   const lessons: Lesson[] = (parsed.lessons ?? []).map((l, i) => ({
     order: i,
+    term: Number(l.term) >= 1 && Number(l.term) <= 4 ? Number(l.term) : 0,
     title: (l.title ?? `Lesson ${i + 1}`).trim(),
     outcomes: arr(l.outcomes),
     learningIntentions: arr(l.learningIntentions),
