@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { History as HistoryIcon, Mic, Loader2, Trash2, Sparkles, ChevronRight, BookOpen } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { useConfirm } from '../components/ConfirmProvider'
 import { subscribeEntries, deleteEntry, type LessonEntry } from '../lib/entries'
 
 function formatDate(iso: string) {
@@ -18,6 +19,7 @@ function formatDate(iso: string) {
 export default function History() {
   const { user } = useAuth()
   const navigate = useNavigate()
+  const confirm = useConfirm()
   const [entries, setEntries] = useState<LessonEntry[] | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
@@ -28,7 +30,12 @@ export default function History() {
 
   const remove = async (e: LessonEntry) => {
     if (!user || !e.id) return
-    if (!window.confirm('Delete this diary entry?')) return
+    const ok = await confirm({
+      title: 'Delete this diary entry?',
+      message: 'This permanently removes the entry and its evidence.',
+      confirmLabel: 'Delete entry',
+    })
+    if (!ok) return
     setDeletingId(e.id)
     try {
       await deleteEntry(user.uid, e.id)

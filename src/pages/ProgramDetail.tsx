@@ -15,6 +15,7 @@ import {
   ChevronDown,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { useConfirm } from '../components/ConfirmProvider'
 import { getProgram, deleteProgram, updateProgram, type Lesson, type Program } from '../lib/programs'
 
 const CHIP_SECTIONS = new Set<keyof Lesson>(['outcomes', 'keywords'])
@@ -153,6 +154,7 @@ export default function ProgramDetail() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+  const confirm = useConfirm()
   const [data, setData] = useState<{ program: Program; lessons: Lesson[] } | null>(null)
   const [state, setState] = useState<'loading' | 'ready' | 'missing'>('loading')
   const [highlightId, setHighlightId] = useState<string | null>(null)
@@ -252,7 +254,12 @@ export default function ProgramDetail() {
 
   const remove = async () => {
     if (!user || !id || !data) return
-    if (!window.confirm(`Delete "${data.program.name}"? This removes the program and its lessons.`)) return
+    const ok = await confirm({
+      title: `Delete “${data.program.name}”?`,
+      message: 'This permanently removes the program and all of its lessons.',
+      confirmLabel: 'Delete program',
+    })
+    if (!ok) return
     await deleteProgram(user.uid, id)
     navigate('/app/programs')
   }

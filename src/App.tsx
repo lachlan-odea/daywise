@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
+import { ConfirmProvider } from './components/ConfirmProvider'
 import ProtectedRoute from './components/ProtectedRoute'
 import AppShell from './components/AppShell'
 import LandingPage from './pages/LandingPage'
@@ -17,6 +18,7 @@ import Settings from './pages/Settings'
 export default function App() {
   return (
     <AuthProvider>
+      <ConfirmProvider>
       <BrowserRouter basename={import.meta.env.BASE_URL}>
         <Routes>
           <Route path="/" element={<LandingPage />} />
@@ -42,6 +44,7 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
+      </ConfirmProvider>
     </AuthProvider>
   )
 }

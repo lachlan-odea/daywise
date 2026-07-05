@@ -4,12 +4,14 @@ import { BookOpen, Plus, Sparkles, Trash2, Loader2, FileText, GraduationCap, Loc
 import { useAuth } from '../context/AuthContext'
 import { subscribePrograms, deleteProgram, type Program } from '../lib/programs'
 import { useEntitlements } from '../hooks/useEntitlements'
+import { useConfirm } from '../components/ConfirmProvider'
 import ProgramImport from '../components/ProgramImport'
 
 export default function Programs() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const { maxPrograms, paid } = useEntitlements()
+  const confirm = useConfirm()
   const [programs, setPrograms] = useState<Program[] | null>(null)
   const [showImport, setShowImport] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -23,7 +25,12 @@ export default function Programs() {
 
   const remove = async (p: Program) => {
     if (!user || !p.id) return
-    if (!window.confirm(`Delete "${p.name}"? This removes the program and its lessons.`)) return
+    const ok = await confirm({
+      title: `Delete “${p.name}”?`,
+      message: 'This permanently removes the program and all of its lessons.',
+      confirmLabel: 'Delete program',
+    })
+    if (!ok) return
     setDeletingId(p.id)
     try {
       await deleteProgram(user.uid, p.id)
