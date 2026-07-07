@@ -77,7 +77,7 @@ VITE_FIREBASE_MESSAGING_SENDER_ID=1234567890
 VITE_FIREBASE_APP_ID=1:1234567890:web:abcdef
 ```
 
-Then run `npm run dev` and try signing up at <http://localhost:5173/project-daybook-website/signup>.
+Then run `npm run dev` and try signing up at <http://localhost:5173/daywise/signup>.
 
 ## 7. Configure the app in production (GitHub Actions)
 

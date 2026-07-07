@@ -2,9 +2,9 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
-const BASE = '/project-daybook-website/'
+const BASE = '/daywise/'
 
-// Served from https://lachlan-odea.github.io/project-daybook-website/
+// Served from https://lachlan-odea.github.io/daywise/
 export default defineConfig({
   base: BASE,
   plugins: [
