@@ -15,7 +15,7 @@ import {
   Download,
   Crown,
 } from 'lucide-react'
-import { LogoMark } from './Logo'
+import { LogoMark, Wordmark } from './Logo'
 import GlobalSearch from './GlobalSearch'
 import { useAuth } from '../context/AuthContext'
 import { useProfile } from '../hooks/useProfile'
@@ -79,12 +79,9 @@ export default function AppShell() {
 
   const SidebarContent = (
     <>
-      <div className="flex h-16 items-center gap-2.5 border-b border-navy-100 px-6">
+      <div className="flex h-16 items-center gap-2 border-b border-navy-100 px-6">
         <LogoMark size={34} />
-        <span className="flex items-baseline text-lg font-extrabold lowercase tracking-tight">
-          <span className="text-navy-800">day</span>
-          <span className="text-teal-500">wise</span>
-        </span>
+        <Wordmark height={18} variant="dark" />
       </div>
       <nav className="flex-1 space-y-1 p-4">
         {nav.map((item) =>

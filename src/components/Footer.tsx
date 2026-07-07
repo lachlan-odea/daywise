@@ -1,4 +1,4 @@
-import { LogoMark } from './Logo'
+import { LogoMark, Wordmark } from './Logo'
 
 const columns = [
   {
@@ -32,12 +32,9 @@ export default function Footer() {
       <div className="container-page relative py-16">
         <div className="grid gap-12 lg:grid-cols-[1.4fr_repeat(4,1fr)]">
           <div className="max-w-xs">
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2">
               <LogoMark size={40} />
-              <span className="flex items-baseline text-xl font-extrabold lowercase tracking-tight">
-                <span className="text-white">day</span>
-                <span className="text-teal-400">wise</span>
-              </span>
+              <Wordmark height={20} variant="light" />
             </div>
             <p className="mt-4 text-sm leading-relaxed text-navy-300">
               The AI teaching assistant that turns everyday teaching into professional evidence — automatically.

@@ -19,7 +19,7 @@ const plans = [
       '30-day evidence retention',
     ],
   },
-  /*{
+ /* {
     name: 'Teacher Pro',
     tagline: 'Everything a working teacher needs, all year.',
     monthly: 12,
@@ -72,7 +72,7 @@ export default function Pricing() {
             week.
           </p>
 
-          {/* <div className="mt-8 inline-flex items-center gap-1 rounded-full border border-navy-100 bg-white p-1 shadow-soft">
+           {/*<div className="mt-8 inline-flex items-center gap-1 rounded-full border border-navy-100 bg-white p-1 shadow-soft">
             <button
               onClick={() => setYearly(false)}
               className={`rounded-full px-5 py-2 text-sm font-semibold transition-colors ${

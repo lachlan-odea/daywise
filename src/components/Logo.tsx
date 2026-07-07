@@ -19,6 +19,19 @@ export function LogoMark({ size = 40 }: { size?: number }) {
   )
 }
 
+/** The daywise wordmark image. Uses the white variant on dark backgrounds. */
+export function Wordmark({ height = 22, variant = 'dark' }: { height?: number; variant?: 'dark' | 'light' }) {
+  const file = variant === 'light' ? 'brand-wordmark-white.png' : 'brand-wordmark.png'
+  return (
+    <img
+      src={`${import.meta.env.BASE_URL}${file}`}
+      alt="daywise"
+      style={{ height }}
+      className="w-auto object-contain"
+    />
+  )
+}
+
 export default function Logo({
   className = '',
   markSize = 40,
@@ -26,14 +39,9 @@ export default function Logo({
   variant = 'dark',
 }: LogoProps) {
   return (
-    <span className={`inline-flex items-center gap-2.5 ${className}`}>
+    <span className={`inline-flex items-center gap-2 ${className}`}>
       <LogoMark size={markSize} />
-      {showWordmark && (
-        <span className="flex items-baseline text-[1.4rem] font-extrabold lowercase leading-none tracking-tight">
-          <span className={variant === 'dark' ? 'text-navy-800' : 'text-white'}>day</span>
-          <span className="text-teal-500">wise</span>
-        </span>
-      )}
+      {showWordmark && <Wordmark height={Math.round(markSize * 0.5)} variant={variant} />}
     </span>
   )
 }

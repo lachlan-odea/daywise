@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { CheckCircle2, Mic, Sparkles } from 'lucide-react'
-import { LogoMark } from './Logo'
+import { LogoMark, Wordmark } from './Logo'
 
 const highlights = [
   { icon: Mic, text: 'Record a lesson in 30 seconds by voice or text' },
@@ -30,12 +30,9 @@ export default function AuthLayout({
               'radial-gradient(600px circle at 20% 15%, #17a085, transparent 55%), radial-gradient(600px circle at 85% 90%, #3491f0, transparent 55%)',
           }}
         />
-        <Link to="/" className="relative flex items-center gap-2.5">
+        <Link to="/" className="relative flex items-center gap-2">
           <LogoMark size={40} />
-          <span className="flex items-baseline text-xl font-extrabold lowercase tracking-tight">
-            <span className="text-white">day</span>
-            <span className="text-teal-400">wise</span>
-          </span>
+          <Wordmark height={22} variant="light" />
         </Link>
 
         <div className="relative">
@@ -62,12 +59,9 @@ export default function AuthLayout({
       {/* Form panel */}
       <div className="flex items-center justify-center bg-cloud px-5 py-12 sm:px-8">
         <div className="w-full max-w-md">
-          <Link to="/" className="mb-8 flex items-center gap-2.5 lg:hidden">
+          <Link to="/" className="mb-8 flex items-center gap-2 lg:hidden">
             <LogoMark size={36} />
-            <span className="flex items-baseline text-lg font-extrabold lowercase tracking-tight">
-              <span className="text-navy-800">day</span>
-              <span className="text-teal-500">wise</span>
-            </span>
+            <Wordmark height={18} variant="dark" />
           </Link>
           <h1 className="text-2xl font-extrabold tracking-tight text-navy-900 sm:text-3xl">{title}</h1>
           <p className="mt-2 text-navy-500">{subtitle}</p>

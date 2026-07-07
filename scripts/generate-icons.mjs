@@ -27,8 +27,9 @@ console.log('wrote brand-mark.png')
 
 // Clean, space-free copies of the wordmark and combination lockups.
 await sharp(join(brandSrc, 'daywise logos_Word Mark.png')).trim().png().toFile(join(pub, 'brand-wordmark.png'))
+await sharp(join(brandSrc, 'daywise logos_Word Mark_white.png')).trim().png().toFile(join(pub, 'brand-wordmark-white.png'))
 await sharp(join(brandSrc, 'daywise logos_Combination.png')).trim().png().toFile(join(pub, 'brand-combination.png'))
-console.log('wrote brand-wordmark.png, brand-combination.png')
+console.log('wrote brand-wordmark.png, brand-wordmark-white.png, brand-combination.png')
 
 const roundedMask = (size) =>
   Buffer.from(
