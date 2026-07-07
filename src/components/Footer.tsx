@@ -5,7 +5,7 @@ const columns = [
     title: 'Product',
     links: ['Dashboard', 'Record Lesson', 'Programs', 'History', 'Data & Reports', 'Curriculum Intelligence'],
   },
-  {
+  /*{
     title: 'Company',
     links: ['About', 'Careers', 'Blog', 'Contact', 'Press kit'],
   },
@@ -16,7 +16,7 @@ const columns = [
   {
     title: 'Legal',
     links: ['Privacy', 'Terms', 'Data & security', 'Student data policy', 'Accessibility'],
-  },
+  },*/
 ]
 
 export default function Footer() {

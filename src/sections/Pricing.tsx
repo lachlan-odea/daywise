@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Check, Sparkles } from 'lucide-react'
 import Reveal from '../components/Reveal'
@@ -20,7 +19,7 @@ const plans = [
       '30-day evidence retention',
     ],
   },
-  {
+  /*{
     name: 'Teacher Pro',
     tagline: 'Everything a working teacher needs, all year.',
     monthly: 12,
@@ -54,11 +53,11 @@ const plans = [
       'Admin controls & SSO',
       'Onboarding & training',
     ],
-  },
+  },*/
 ]
 
 export default function Pricing() {
-  const [yearly, setYearly] = useState(true)
+  const yearly = true
 
   return (
     <section id="pricing" className="scroll-mt-24 py-20 lg:py-28">
@@ -73,7 +72,7 @@ export default function Pricing() {
             week.
           </p>
 
-          <div className="mt-8 inline-flex items-center gap-1 rounded-full border border-navy-100 bg-white p-1 shadow-soft">
+          {/* <div className="mt-8 inline-flex items-center gap-1 rounded-full border border-navy-100 bg-white p-1 shadow-soft">
             <button
               onClick={() => setYearly(false)}
               className={`rounded-full px-5 py-2 text-sm font-semibold transition-colors ${
@@ -91,7 +90,7 @@ export default function Pricing() {
               Yearly
               <span className="rounded-full bg-teal-400 px-2 py-0.5 text-[10px] font-bold text-navy-950">-25%</span>
             </button>
-          </div>
+          </div>*/}
         </Reveal>
 
         <div className="mt-14 grid items-stretch gap-6 lg:grid-cols-3">
@@ -158,9 +157,9 @@ export default function Pricing() {
           ))}
         </div>
 
-        <p className="mt-8 text-center text-sm text-navy-500">
+        {/*<p className="mt-8 text-center text-sm text-navy-500">
           Special pricing available for graduate teachers, casual/relief staff and whole schools.
-        </p>
+        </p>*/}
       </div>
     </section>
   )

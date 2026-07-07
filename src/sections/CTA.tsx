@@ -30,11 +30,8 @@ export default function CTA() {
 
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Link to="/signup" className="btn-primary text-base">
-                Start your free trial <ArrowRight size={18} />
+                Start for free today <ArrowRight size={18} />
               </Link>
-              <a href="#" className="btn text-base border border-white/20 bg-white/5 px-6 py-3 text-white hover:bg-white/10">
-                Book a demo
-              </a>
             </div>
 
             <div className="mt-7 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-navy-300">
