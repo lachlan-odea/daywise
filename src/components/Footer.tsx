@@ -43,7 +43,7 @@ export default function Footer() {
               The AI teaching assistant that turns everyday teaching into professional evidence — automatically.
             </p>
             <p className="mt-6 text-xs font-bold uppercase tracking-[0.2em] text-teal-400">
-              Teach. Record. Evidence. Automated.
+              Teach. Talk. Done.
             </p>
           </div>
 

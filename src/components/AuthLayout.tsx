@@ -55,7 +55,7 @@ export default function AuthLayout({
         </div>
 
         <p className="relative text-xs font-bold uppercase tracking-[0.2em] text-teal-400">
-          Teach. Record. Evidence. Automated.
+          Teach. Talk. Done.
         </p>
       </div>
 

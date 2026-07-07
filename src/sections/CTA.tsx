@@ -18,7 +18,7 @@ export default function CTA() {
 
           <div className="relative">
             <span className="inline-flex items-center gap-2 rounded-full border border-teal-400/30 bg-teal-400/10 px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-teal-300">
-              <Mic size={13} /> Teach. Record. Evidence. Automated.
+              <Mic size={13} /> Teach. Talk. Done.
             </span>
             <h2 className="mx-auto mt-6 max-w-2xl text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl lg:text-5xl">
               Give yourself the time to just <span className="text-gradient-teal">teach</span>.
