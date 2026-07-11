@@ -16,7 +16,16 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useConfirm } from '../components/ConfirmProvider'
-import { getProgram, deleteProgram, updateProgram, type Lesson, type Program } from '../lib/programs'
+import {
+  getProgram,
+  deleteProgram,
+  updateProgram,
+  unitLabel,
+  TERM_OPTIONS,
+  type Lesson,
+  type Program,
+  type ProgramStructure,
+} from '../lib/programs'
 
 const CHIP_SECTIONS = new Set<keyof Lesson>(['outcomes', 'keywords'])
 
@@ -161,7 +170,14 @@ export default function ProgramDetail() {
 
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [meta, setMeta] = useState({ name: '', subject: '', stage: '', description: '' })
+  const [meta, setMeta] = useState<{
+    name: string
+    subject: string
+    stage: string
+    description: string
+    structure: ProgramStructure
+    term: number
+  }>({ name: '', subject: '', stage: '', description: '', structure: 'lessons', term: 0 })
   const [draft, setDraft] = useState<Lesson[]>([])
 
   useEffect(() => {
@@ -208,6 +224,8 @@ export default function ProgramDetail() {
       subject: data.program.subject,
       stage: data.program.stage,
       description: data.program.description ?? '',
+      structure: data.program.structure ?? 'lessons',
+      term: data.program.term ?? 0,
     })
     setDraft(cloneLessons(data.lessons))
     setEditing(true)
@@ -243,6 +261,8 @@ export default function ProgramDetail() {
         subject: meta.subject.trim(),
         stage: meta.stage.trim(),
         description: meta.description.trim(),
+        structure: meta.structure,
+        term: meta.term,
       }
       await updateProgram(user.uid, id, trimmedMeta, cleaned)
       setData({ program: { ...(data as { program: Program }).program, ...trimmedMeta, lessonCount: cleaned.length }, lessons: cleaned })
@@ -286,7 +306,9 @@ export default function ProgramDetail() {
   }
 
   const { program, lessons } = data
-  const hasTerms = !editing && lessons.some((l) => (l.term ?? 0) >= 1)
+  const unit = unitLabel(program.structure)
+  // Group by per-lesson term only for full-year programs (single-term programs are all one term).
+  const hasTerms = !editing && (program.term ?? 0) === 0 && lessons.some((l) => (l.term ?? 0) >= 1)
   const lessonsToShow = editing
     ? draft
     : hasTerms
@@ -330,6 +352,33 @@ export default function ProgramDetail() {
                   placeholder="Stage / year"
                 />
               </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="block">
+                  <span className="mb-1 block text-xs font-semibold text-navy-600">Structure</span>
+                  <select
+                    value={meta.structure}
+                    onChange={(e) => setMeta({ ...meta, structure: e.target.value as ProgramStructure })}
+                    className={smallInput}
+                  >
+                    <option value="lessons">Lessons</option>
+                    <option value="modules">Modules (Weeks)</option>
+                  </select>
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-xs font-semibold text-navy-600">Term</span>
+                  <select
+                    value={meta.term}
+                    onChange={(e) => setMeta({ ...meta, term: Number(e.target.value) })}
+                    className={smallInput}
+                  >
+                    {TERM_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
               <textarea
                 value={meta.description}
                 onChange={(e) => setMeta({ ...meta, description: e.target.value })}
@@ -349,8 +398,16 @@ export default function ProgramDetail() {
                     <GraduationCap size={12} /> {program.stage}
                   </span>
                 )}
+                {(program.term ?? 0) >= 1 && (
+                  <span className="rounded-md bg-navy-800 px-2 py-0.5 text-xs font-bold text-white">
+                    Term {program.term}
+                  </span>
+                )}
+                <span className="rounded-md bg-teal-50 px-2 py-0.5 text-xs font-bold text-teal-700">
+                  {program.structure === 'modules' ? 'Modules' : 'Lessons'}
+                </span>
                 <span className="flex items-center gap-1 text-xs font-semibold text-navy-500">
-                  <FileText size={12} className="text-teal-500" /> {lessons.length} lessons
+                  <FileText size={12} className="text-teal-500" /> {lessons.length} {unit.many}
                 </span>
               </div>
               {program.description && <p className="mt-3 max-w-2xl text-sm text-navy-600">{program.description}</p>}
@@ -407,21 +464,23 @@ export default function ProgramDetail() {
                     value={lesson.title}
                     onChange={(e) => setLesson(i, { title: e.target.value })}
                     className={smallInput + ' flex-1 font-bold'}
-                    placeholder="Lesson title"
+                    placeholder={`${unit.one} title`}
                   />
-                  <select
-                    value={lesson.term || ''}
-                    onChange={(e) => setLesson(i, { term: e.target.value ? Number(e.target.value) : 0 })}
-                    className="shrink-0 rounded-lg border border-navy-200 px-2 py-1.5 text-xs font-semibold text-navy-700 outline-none focus:border-teal-400"
-                    title="Term"
-                  >
-                    <option value="">No term</option>
-                    {[1, 2, 3, 4].map((t) => (
-                      <option key={t} value={t}>
-                        Term {t}
-                      </option>
-                    ))}
-                  </select>
+                  {meta.term === 0 && (
+                    <select
+                      value={lesson.term || ''}
+                      onChange={(e) => setLesson(i, { term: e.target.value ? Number(e.target.value) : 0 })}
+                      className="shrink-0 rounded-lg border border-navy-200 px-2 py-1.5 text-xs font-semibold text-navy-700 outline-none focus:border-teal-400"
+                      title="Term"
+                    >
+                      <option value="">No term</option>
+                      {[1, 2, 3, 4].map((t) => (
+                        <option key={t} value={t}>
+                          Term {t}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                   <div className="flex items-center gap-0.5">
                     <button
                       onClick={() => moveLesson(i, -1)}
@@ -496,7 +555,7 @@ export default function ProgramDetail() {
           onClick={() => setDraft((prev) => [...prev, emptyLesson()])}
           className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-navy-200 py-4 text-sm font-semibold text-navy-500 hover:border-teal-300 hover:text-teal-600"
         >
-          <Plus size={16} /> Add a lesson
+          <Plus size={16} /> Add a {unit.add}
         </button>
       )}
     </main>

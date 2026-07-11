@@ -28,6 +28,8 @@ export interface Lesson {
   assessment: string[]
 }
 
+export type ProgramStructure = 'lessons' | 'modules'
+
 export interface Program {
   id?: string
   name: string
@@ -35,9 +37,28 @@ export interface Program {
   stage: string
   description?: string
   source?: string
+  /** How the program is organised — individual lessons, or weekly modules. */
+  structure?: ProgramStructure
+  /** 0 = full year / all terms; 1–4 = a single term. */
+  term?: number
   lessonCount: number
   createdAt?: Timestamp
 }
+
+/** Singular/plural unit words for a program's structure. */
+export function unitLabel(structure?: ProgramStructure) {
+  return structure === 'modules'
+    ? { one: 'Module', many: 'modules', add: 'module' }
+    : { one: 'Lesson', many: 'lessons', add: 'lesson' }
+}
+
+export const TERM_OPTIONS: { value: number; label: string }[] = [
+  { value: 0, label: 'Full year / all terms' },
+  { value: 1, label: 'Term 1' },
+  { value: 2, label: 'Term 2' },
+  { value: 3, label: 'Term 3' },
+  { value: 4, label: 'Term 4' },
+]
 
 /** The five detail sections rendered for each lesson. */
 export const LESSON_SECTIONS: { key: keyof Lesson; label: string }[] = [
@@ -109,6 +130,8 @@ export async function saveProgram(
     stage: program.stage,
     description: program.description ?? '',
     source: program.source ?? '',
+    structure: program.structure ?? 'lessons',
+    term: program.term ?? 0,
     lessonCount: lessons.length,
     createdAt: serverTimestamp(),
   })
@@ -125,7 +148,7 @@ export async function saveProgram(
 export async function updateProgram(
   uid: string,
   id: string,
-  meta: Pick<Program, 'name' | 'subject' | 'stage' | 'description'>,
+  meta: Pick<Program, 'name' | 'subject' | 'stage' | 'description' | 'structure' | 'term'>,
   lessons: Lesson[],
 ) {
   if (!db) throw { code: 'unavailable' }
@@ -142,6 +165,8 @@ export async function updateProgram(
     subject: meta.subject,
     stage: meta.stage,
     description: meta.description ?? '',
+    structure: meta.structure ?? 'lessons',
+    term: meta.term ?? 0,
     lessonCount: lessons.length,
   })
   await batch.commit()

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { BookOpen, Plus, Sparkles, Trash2, Loader2, FileText, GraduationCap, Lock, ArrowUpRight } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import { subscribePrograms, deleteProgram, type Program } from '../lib/programs'
+import { subscribePrograms, deleteProgram, unitLabel, type Program } from '../lib/programs'
 import { useEntitlements } from '../hooks/useEntitlements'
 import { useConfirm } from '../components/ConfirmProvider'
 import ProgramImport from '../components/ProgramImport'
@@ -132,9 +132,12 @@ export default function Programs() {
                     <GraduationCap size={11} /> {p.stage}
                   </span>
                 )}
+                {(p.term ?? 0) >= 1 && (
+                  <span className="rounded-md bg-navy-800 px-2 py-0.5 text-[11px] font-bold text-white">Term {p.term}</span>
+                )}
               </div>
               <div className="mt-auto flex items-center gap-1.5 pt-5 text-xs font-semibold text-navy-500">
-                <FileText size={13} className="text-teal-500" /> {p.lessonCount} lessons
+                <FileText size={13} className="text-teal-500" /> {p.lessonCount} {unitLabel(p.structure).many}
               </div>
             </div>
           ))}

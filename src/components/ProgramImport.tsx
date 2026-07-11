@@ -3,7 +3,7 @@ import { Upload, X, Loader2, AlertTriangle, Sparkles, FileText, BookOpen, ArrowL
 import { useAuth } from '../context/AuthContext'
 import { aiAvailable } from '../lib/aiTimetable'
 import { aiExtractProgram, type ExtractedProgram } from '../lib/aiPrograms'
-import { saveProgram } from '../lib/programs'
+import { saveProgram, unitLabel, TERM_OPTIONS, type ProgramStructure } from '../lib/programs'
 
 const inputCls =
   'w-full rounded-xl border border-navy-200 bg-white px-4 py-2.5 text-navy-900 outline-none transition-colors placeholder:text-navy-300 focus:border-teal-400 focus:ring-4 focus:ring-teal-100'
@@ -27,6 +27,8 @@ export default function ProgramImport({
   const [subject, setSubject] = useState('')
   const [stage, setStage] = useState('')
   const [source, setSource] = useState('')
+  const [structure, setStructure] = useState<ProgramStructure>('lessons')
+  const [term, setTerm] = useState(0)
 
   const handleFile = async (file: File) => {
     setError('')
@@ -39,6 +41,9 @@ export default function ProgramImport({
       setName(res.name)
       setSubject(res.subject)
       setStage(res.stage)
+      // If every lesson shares one term, default the program to that single term.
+      const terms = new Set(res.lessons.map((l) => l.term).filter((t) => t >= 1))
+      setTerm(terms.size === 1 ? [...terms][0] : 0)
       setStep('review')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not analyse that file. Please try another.')
@@ -54,7 +59,15 @@ export default function ProgramImport({
     try {
       const id = await saveProgram(
         user.uid,
-        { name: name.trim() || 'Untitled program', subject: subject.trim(), stage: stage.trim(), description: extracted.description, source },
+        {
+          name: name.trim() || 'Untitled program',
+          subject: subject.trim(),
+          stage: stage.trim(),
+          description: extracted.description,
+          source,
+          structure,
+          term,
+        },
         extracted.lessons,
       )
       onSaved(id)
@@ -149,7 +162,8 @@ export default function ProgramImport({
             extracted && (
               <>
                 <div className="mb-5 flex items-center gap-2 rounded-xl bg-teal-50 px-4 py-3 text-sm text-teal-800">
-                  <Sparkles size={16} /> Found <b>{extracted.lessons.length}</b> lessons. Review the details, then save.
+                  <Sparkles size={16} /> Found <b>{extracted.lessons.length}</b> {unitLabel(structure).many}. Review the
+                  details, then save.
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -165,10 +179,27 @@ export default function ProgramImport({
                     <span className="mb-1.5 block text-sm font-semibold text-navy-800">Stage / year</span>
                     <input className={inputCls} value={stage} onChange={(e) => setStage(e.target.value)} placeholder="Stage 4" />
                   </label>
+                  <label className="block">
+                    <span className="mb-1.5 block text-sm font-semibold text-navy-800">Structure</span>
+                    <select className={inputCls} value={structure} onChange={(e) => setStructure(e.target.value as ProgramStructure)}>
+                      <option value="lessons">Lessons</option>
+                      <option value="modules">Modules (Weeks)</option>
+                    </select>
+                  </label>
+                  <label className="block">
+                    <span className="mb-1.5 block text-sm font-semibold text-navy-800">Term</span>
+                    <select className={inputCls} value={term} onChange={(e) => setTerm(Number(e.target.value))}>
+                      {TERM_OPTIONS.map((o) => (
+                        <option key={o.value} value={o.value}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                 </div>
 
                 <p className="mb-2 mt-6 text-xs font-bold uppercase tracking-wide text-navy-400">
-                  Lessons ({extracted.lessons.length})
+                  {unitLabel(structure).many} ({extracted.lessons.length})
                 </p>
                 <div className="max-h-64 space-y-2 overflow-y-auto">
                   {extracted.lessons.map((l, i) => (
