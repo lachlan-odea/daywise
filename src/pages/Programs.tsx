@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { BookOpen, Plus, Sparkles, Trash2, Loader2, FileText, GraduationCap, Lock, ArrowUpRight } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
@@ -6,6 +6,22 @@ import { subscribePrograms, deleteProgram, unitLabel, type Program } from '../li
 import { useEntitlements } from '../hooks/useEntitlements'
 import { useConfirm } from '../components/ConfirmProvider'
 import ProgramImport from '../components/ProgramImport'
+
+type GroupBy = 'none' | 'subject' | 'stage' | 'term'
+
+const VIEW_OPTIONS: { value: GroupBy; label: string }[] = [
+  { value: 'none', label: 'All' },
+  { value: 'subject', label: 'Subject' },
+  { value: 'stage', label: 'Stage' },
+  { value: 'term', label: 'Term' },
+]
+
+function groupValue(p: Program, by: GroupBy): string {
+  if (by === 'subject') return p.subject?.trim() || 'Other'
+  if (by === 'stage') return p.stage?.trim() || 'Other'
+  if (by === 'term') return (p.term ?? 0) >= 1 ? `Term ${p.term}` : 'Full year'
+  return ''
+}
 
 export default function Programs() {
   const { user } = useAuth()
@@ -15,8 +31,27 @@ export default function Programs() {
   const [programs, setPrograms] = useState<Program[] | null>(null)
   const [showImport, setShowImport] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [groupBy, setGroupBy] = useState<GroupBy>('none')
 
   const atLimit = !!programs && programs.length >= maxPrograms
+
+  const grouped = useMemo(() => {
+    if (!programs || groupBy === 'none') return null
+    const map = new Map<string, Program[]>()
+    for (const p of programs) {
+      const k = groupValue(p, groupBy)
+      if (!map.has(k)) map.set(k, [])
+      map.get(k)!.push(p)
+    }
+    const entries = [...map.entries()].map(([label, items]) => ({ label, items }))
+    if (groupBy === 'term') {
+      const rank = (l: string) => (l === 'Full year' ? -1 : Number(l.replace('Term ', '')))
+      entries.sort((a, b) => rank(a.label) - rank(b.label))
+    } else {
+      entries.sort((a, b) => (a.label === 'Other' ? 1 : b.label === 'Other' ? -1 : a.label.localeCompare(b.label)))
+    }
+    return entries
+  }, [programs, groupBy])
 
   useEffect(() => {
     if (!user) return
@@ -40,6 +75,47 @@ export default function Programs() {
   }
 
   const loading = programs === null
+
+  const renderCard = (p: Program) => (
+    <div
+      key={p.id}
+      className="group relative flex cursor-pointer flex-col rounded-3xl border border-navy-100 bg-white p-6 transition-all hover:-translate-y-1 hover:border-teal-200 hover:shadow-card"
+      onClick={() => navigate(`/app/programs/${p.id}`)}
+    >
+      <div className="flex items-start justify-between">
+        <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-teal-50 text-teal-600">
+          <BookOpen size={20} />
+        </span>
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            remove(p)
+          }}
+          className="flex h-8 w-8 items-center justify-center rounded-full text-navy-300 opacity-0 transition-opacity hover:bg-red-50 hover:text-red-500 group-hover:opacity-100"
+          aria-label="Delete program"
+        >
+          {deletingId === p.id ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
+        </button>
+      </div>
+      <h3 className="mt-4 line-clamp-2 text-base font-bold text-navy-900">{p.name}</h3>
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        {p.subject && (
+          <span className="rounded-md bg-sky-50 px-2 py-0.5 text-[11px] font-bold text-sky-700">{p.subject}</span>
+        )}
+        {p.stage && (
+          <span className="flex items-center gap-1 rounded-md bg-navy-50 px-2 py-0.5 text-[11px] font-bold text-navy-600">
+            <GraduationCap size={11} /> {p.stage}
+          </span>
+        )}
+        {(p.term ?? 0) >= 1 && (
+          <span className="rounded-md bg-navy-800 px-2 py-0.5 text-[11px] font-bold text-white">Term {p.term}</span>
+        )}
+      </div>
+      <div className="mt-auto flex items-center gap-1.5 pt-5 text-xs font-semibold text-navy-500">
+        <FileText size={13} className="text-teal-500" /> {p.lessonCount} {unitLabel(p.structure).many}
+      </div>
+    </div>
+  )
 
   return (
     <main className="mx-auto max-w-6xl px-5 py-8 sm:px-8">
@@ -100,48 +176,43 @@ export default function Programs() {
           </button>
         </div>
       ) : (
-        <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {programs.map((p) => (
-            <div
-              key={p.id}
-              className="group relative flex cursor-pointer flex-col rounded-3xl border border-navy-100 bg-white p-6 transition-all hover:-translate-y-1 hover:border-teal-200 hover:shadow-card"
-              onClick={() => navigate(`/app/programs/${p.id}`)}
-            >
-              <div className="flex items-start justify-between">
-                <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-teal-50 text-teal-600">
-                  <BookOpen size={20} />
-                </span>
+        <>
+          <div className="mt-6 flex flex-wrap items-center gap-2">
+            <span className="text-xs font-semibold uppercase tracking-wide text-navy-400">View by</span>
+            <div className="inline-flex rounded-full border border-navy-100 bg-white p-1">
+              {VIEW_OPTIONS.map((o) => (
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    remove(p)
-                  }}
-                  className="flex h-8 w-8 items-center justify-center rounded-full text-navy-300 opacity-0 transition-opacity hover:bg-red-50 hover:text-red-500 group-hover:opacity-100"
-                  aria-label="Delete program"
+                  key={o.value}
+                  onClick={() => setGroupBy(o.value)}
+                  className={`rounded-full px-3.5 py-1.5 text-sm font-semibold transition-colors ${
+                    groupBy === o.value ? 'bg-navy-800 text-white' : 'text-navy-600 hover:bg-navy-50'
+                  }`}
                 >
-                  {deletingId === p.id ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
+                  {o.label}
                 </button>
-              </div>
-              <h3 className="mt-4 line-clamp-2 text-base font-bold text-navy-900">{p.name}</h3>
-              <div className="mt-3 flex flex-wrap gap-1.5">
-                {p.subject && (
-                  <span className="rounded-md bg-sky-50 px-2 py-0.5 text-[11px] font-bold text-sky-700">{p.subject}</span>
-                )}
-                {p.stage && (
-                  <span className="flex items-center gap-1 rounded-md bg-navy-50 px-2 py-0.5 text-[11px] font-bold text-navy-600">
-                    <GraduationCap size={11} /> {p.stage}
-                  </span>
-                )}
-                {(p.term ?? 0) >= 1 && (
-                  <span className="rounded-md bg-navy-800 px-2 py-0.5 text-[11px] font-bold text-white">Term {p.term}</span>
-                )}
-              </div>
-              <div className="mt-auto flex items-center gap-1.5 pt-5 text-xs font-semibold text-navy-500">
-                <FileText size={13} className="text-teal-500" /> {p.lessonCount} {unitLabel(p.structure).many}
-              </div>
+              ))}
             </div>
-          ))}
-        </div>
+          </div>
+
+          {grouped ? (
+            <div className="mt-6 space-y-10">
+              {grouped.map((g) => (
+                <section key={g.label}>
+                  <div className="flex items-center gap-3">
+                    <h2 className="text-sm font-bold uppercase tracking-wide text-navy-500">{g.label}</h2>
+                    <span className="rounded-full bg-navy-50 px-2 py-0.5 text-xs font-bold text-navy-400">
+                      {g.items.length}
+                    </span>
+                    <span className="h-px flex-1 bg-navy-100" />
+                  </div>
+                  <div className="mt-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{g.items.map(renderCard)}</div>
+                </section>
+              ))}
+            </div>
+          ) : (
+            <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{programs.map(renderCard)}</div>
+          )}
+        </>
       )}
 
       {showImport && (
