@@ -12,6 +12,7 @@ import {
   X,
   Wand2,
   BookOpen,
+  Info,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition'
@@ -398,13 +399,29 @@ export default function Record() {
               onChange={(v) => setEv({ ...ev, differentiation: v })}
               rows={2}
             />
-            <EvidenceField label="Reflection" value={ev.reflection} onChange={(v) => setEv({ ...ev, reflection: v })} />
-            <ListField
-              label="Next lesson actions"
-              items={ev.nextSteps}
-              onChange={(v) => setEv({ ...ev, nextSteps: v })}
-              placeholder="action"
-            />
+            <div>
+              <EvidenceField label="Reflection" value={ev.reflection} onChange={(v) => setEv({ ...ev, reflection: v })} />
+              {!ev.reflection.trim() && (
+                <p className="mt-1.5 flex items-center gap-1.5 text-xs text-navy-400">
+                  <Info size={13} className="shrink-0 text-navy-300" /> No reflection was drawn from your note — add one
+                  if you’d like.
+                </p>
+              )}
+            </div>
+            <div>
+              <ListField
+                label="Next lesson actions"
+                items={ev.nextSteps}
+                onChange={(v) => setEv({ ...ev, nextSteps: v })}
+                placeholder="action"
+              />
+              {ev.nextSteps.length === 0 && (
+                <p className="mt-1.5 flex items-center gap-1.5 text-xs text-navy-400">
+                  <Info size={13} className="shrink-0 text-navy-300" /> No next steps were drawn from your note — add any
+                  follow-ups if you’d like.
+                </p>
+              )}
+            </div>
 
             {error && (
               <div className="flex items-start gap-2 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
