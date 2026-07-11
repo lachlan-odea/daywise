@@ -8,7 +8,19 @@ export interface Period {
   end: string
 }
 
-export type ClassColor = 'teal' | 'sky' | 'navy' | 'amber' | 'violet' | 'rose'
+export type ClassColor =
+  | 'rose'
+  | 'pink'
+  | 'orange'
+  | 'amber'
+  | 'emerald'
+  | 'teal'
+  | 'cyan'
+  | 'sky'
+  | 'blue'
+  | 'indigo'
+  | 'violet'
+  | 'navy'
 
 export interface ClassCell {
   subject: string
@@ -73,12 +85,18 @@ export function currentWeek(tt: Timetable | null, now: Date = new Date()): WeekI
 }
 
 export const CLASS_COLORS: Record<ClassColor, { chip: string; dot: string; label: string }> = {
-  teal: { chip: 'bg-teal-100 text-teal-800 border-teal-200', dot: 'bg-teal-500', label: 'Teal' },
-  sky: { chip: 'bg-sky-100 text-sky-800 border-sky-200', dot: 'bg-sky-500', label: 'Sky' },
-  navy: { chip: 'bg-navy-100 text-navy-800 border-navy-200', dot: 'bg-navy-700', label: 'Navy' },
-  amber: { chip: 'bg-amber-100 text-amber-800 border-amber-200', dot: 'bg-amber-500', label: 'Amber' },
-  violet: { chip: 'bg-violet-100 text-violet-800 border-violet-200', dot: 'bg-violet-500', label: 'Violet' },
   rose: { chip: 'bg-rose-100 text-rose-800 border-rose-200', dot: 'bg-rose-500', label: 'Rose' },
+  pink: { chip: 'bg-pink-100 text-pink-800 border-pink-200', dot: 'bg-pink-500', label: 'Pink' },
+  orange: { chip: 'bg-orange-100 text-orange-800 border-orange-200', dot: 'bg-orange-500', label: 'Orange' },
+  amber: { chip: 'bg-amber-100 text-amber-800 border-amber-200', dot: 'bg-amber-500', label: 'Amber' },
+  emerald: { chip: 'bg-emerald-100 text-emerald-800 border-emerald-200', dot: 'bg-emerald-500', label: 'Emerald' },
+  teal: { chip: 'bg-teal-100 text-teal-800 border-teal-200', dot: 'bg-teal-500', label: 'Teal' },
+  cyan: { chip: 'bg-cyan-100 text-cyan-800 border-cyan-200', dot: 'bg-cyan-500', label: 'Cyan' },
+  sky: { chip: 'bg-sky-100 text-sky-800 border-sky-200', dot: 'bg-sky-500', label: 'Sky' },
+  blue: { chip: 'bg-blue-100 text-blue-800 border-blue-200', dot: 'bg-blue-500', label: 'Blue' },
+  indigo: { chip: 'bg-indigo-100 text-indigo-800 border-indigo-200', dot: 'bg-indigo-500', label: 'Indigo' },
+  violet: { chip: 'bg-violet-100 text-violet-800 border-violet-200', dot: 'bg-violet-500', label: 'Violet' },
+  navy: { chip: 'bg-navy-100 text-navy-800 border-navy-200', dot: 'bg-navy-700', label: 'Navy' },
 }
 
 export function cellKey(week: WeekId, periodId: string, dayIndex: number) {
