@@ -30,7 +30,6 @@ const nav = [
   { to: '/app/programs', label: 'Programs', icon: BookOpen },
   { to: '/app/history', label: 'History', icon: History },
   { to: '/app/reports', label: 'Data & Reports', icon: BarChart3, soon: true },
-  { to: '/app/settings', label: 'Settings', icon: SettingsIcon },
 ]
 
 function initialsOf(name: string) {
