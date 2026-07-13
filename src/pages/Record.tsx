@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Mic,
   Square,
@@ -107,12 +107,13 @@ function EvidenceField({
 export default function Record() {
   const { user } = useAuth()
   const navigate = useNavigate()
+  const [params] = useSearchParams()
 
-  const [date, setDate] = useState(todayISO())
+  const [date, setDate] = useState(params.get('date') || todayISO())
   const [note, setNote] = useState('')
-  const [subject, setSubject] = useState('')
-  const [className, setClassName] = useState('')
-  const [room, setRoom] = useState('')
+  const [subject, setSubject] = useState(params.get('subject') || '')
+  const [className, setClassName] = useState(params.get('class') || '')
+  const [room, setRoom] = useState(params.get('room') || '')
 
   const [tt, setTt] = useState<Timetable | null>(null)
   const [step, setStep] = useState<'compose' | 'review'>('compose')

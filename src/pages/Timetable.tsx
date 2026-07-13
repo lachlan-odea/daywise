@@ -310,7 +310,7 @@ export default function Timetable() {
           </label>
         )}
 
-        {editing && tt.fortnightly && (
+        {editing && tt.fortnightly && !(tt.terms ?? []).some((t) => t?.start && t?.end) && (
           <div className="flex items-center gap-2 text-sm text-navy-500">
             <span>This calendar week is:</span>
             {WEEKS.map((w) => (
@@ -327,6 +327,9 @@ export default function Timetable() {
               </button>
             ))}
           </div>
+        )}
+        {editing && tt.fortnightly && (tt.terms ?? []).some((t) => t?.start && t?.end) && (
+          <span className="text-xs text-navy-400">Week A/B follows your term dates (each term starts on Week A).</span>
         )}
       </div>
 

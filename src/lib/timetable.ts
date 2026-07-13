@@ -117,9 +117,19 @@ export function termInfo(tt: Timetable | null, date: Date = new Date()): TermInf
   return { hasCalendar: true, isHoliday: false, termNumber: idx + 1, week: weeks + 1 }
 }
 
-/** Works out whether a given date falls in Week A or Week B, from the anchor. */
+/** Works out whether a given date falls in Week A or Week B. Each term starts on Week A. */
 export function currentWeek(tt: Timetable | null, now: Date = new Date()): WeekId {
-  if (!tt?.fortnightly || !tt.anchorMondayISO || !tt.anchorWeek) return 'A'
+  if (!tt?.fortnightly) return 'A'
+  // Each term starts on Week A, so derive A/B from the current term's start.
+  const idx = currentTermIndex(tt, now)
+  if (idx >= 0 && tt.terms?.[idx]?.start) {
+    const [ty, tm, td] = tt.terms[idx].start.split('-').map(Number)
+    const termStart = mondayOf(new Date(ty, (tm || 1) - 1, td || 1))
+    const w = Math.round((mondayOf(now).getTime() - termStart.getTime()) / (7 * 86_400_000))
+    return (((w % 2) + 2) % 2) === 0 ? 'A' : 'B'
+  }
+  // Fallback to the manual anchor (e.g. no term calendar, or during holidays).
+  if (!tt.anchorMondayISO || !tt.anchorWeek) return 'A'
   const [y, m, d] = tt.anchorMondayISO.split('-').map(Number)
   const anchor = new Date(y, (m || 1) - 1, d || 1)
   const weeks = Math.round((mondayOf(now).getTime() - anchor.getTime()) / (7 * 86_400_000))

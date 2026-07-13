@@ -77,6 +77,15 @@ function monthMatrix(year: number, month: number): (Date | null)[] {
   return cells
 }
 
+/** Record-lesson link pre-filled with the class + date. */
+function recordHref(dateISO: string, cell?: { subject?: string; className?: string; room?: string }) {
+  const q = new URLSearchParams({ date: dateISO })
+  if (cell?.subject) q.set('subject', cell.subject)
+  if (cell?.className) q.set('class', cell.className)
+  if (cell?.room) q.set('room', cell.room)
+  return `/app/record?${q.toString()}`
+}
+
 const overview = (e: LessonEntry) => e.evidence?.annotations?.trim() || e.note?.trim() || '—'
 const sameClass = (e: LessonEntry, cell: { subject: string; className: string }) => {
   const s = (x?: string) => (x ?? '').trim().toLowerCase()
@@ -161,9 +170,11 @@ export default function History() {
   const dayView = useMemo(() => {
     const date = parseISO(selected)
     const weekday = (date.getDay() + 6) % 7 // 0=Mon … 6=Sun
+    const holiday = termsSet && currentTermIndex(tt, date) < 0
     const used = new Set<string>()
     const rows: { periodLabel: string; time: string; cell: { subject: string; className: string; room?: string; color?: ClassColor }; entry?: LessonEntry }[] = []
-    if (tt && weekday <= 4) {
+    // No timetable on weekends or during the holidays.
+    if (tt && weekday <= 4 && !holiday) {
       const week = currentWeek(tt, date)
       for (const p of tt.periods) {
         const cell = tt.cells[cellKey(week, p.id, weekday)]
@@ -175,8 +186,8 @@ export default function History() {
       }
     }
     const others = selectedEntries.filter((e) => !e.id || !used.has(e.id))
-    return { rows, others, isWeekend: weekday > 4 }
-  }, [selected, tt, selectedEntries])
+    return { rows, others, isWeekend: weekday > 4, holiday }
+  }, [selected, tt, selectedEntries, termsSet])
 
   const remove = async (e: LessonEntry) => {
     if (!user || !e.id) return
@@ -349,13 +360,20 @@ export default function History() {
               <CalendarClock size={18} className="text-teal-500" /> {formatLong(selected)}
             </h2>
 
-            {selectedEntries.length === 0 && dayView.rows.every((r) => !r.entry) ? (
+            {selectedEntries.length === 0 && dayView.rows.length === 0 ? (
               <div className="mt-4 rounded-2xl border border-dashed border-navy-200 bg-white p-8 text-center">
-                <p className="text-sm font-semibold text-navy-700">No entries for this day</p>
-                <p className="mx-auto mt-1 max-w-sm text-sm text-navy-500">
-                  {dayView.isWeekend ? 'It’s the weekend. ' : ''}Record a lesson to build your evidence for this day.
+                <p className="text-sm font-semibold text-navy-700">
+                  {dayView.holiday ? 'Holiday period' : 'No classes for this day'}
                 </p>
-                <Link to="/app/record" className="btn-primary mx-auto mt-4 text-sm">
+                <p className="mx-auto mt-1 max-w-sm text-sm text-navy-500">
+                  {dayView.holiday
+                    ? 'This day falls in the school holidays.'
+                    : dayView.isWeekend
+                      ? 'It’s the weekend.'
+                      : 'No classes are timetabled for this day.'}{' '}
+                  You can still record a lesson if you need to.
+                </p>
+                <Link to={recordHref(selected)} className="btn-primary mx-auto mt-4 text-sm">
                   <Mic size={16} /> Record a lesson
                 </Link>
               </div>
@@ -399,7 +417,7 @@ export default function History() {
                               </Link>
                             ) : (
                               <Link
-                                to="/app/record"
+                                to={recordHref(selected, r.cell)}
                                 className="shrink-0 text-xs font-semibold text-teal-600 hover:text-teal-700"
                               >
                                 Record
