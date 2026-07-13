@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import { LogoMark, Wordmark } from './Logo'
 import GlobalSearch from './GlobalSearch'
+import FeedbackButton from './FeedbackButton'
 import { useAuth } from '../context/AuthContext'
 import { useProfile } from '../hooks/useProfile'
 import { usePwaInstall } from '../hooks/usePwaInstall'
@@ -189,7 +190,8 @@ export default function AppShell() {
             <GlobalSearch />
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <FeedbackButton />
             <button className="relative flex h-9 w-9 items-center justify-center rounded-full text-navy-500 hover:bg-navy-50">
               <Bell size={18} />
               <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-teal-500" />
