@@ -18,6 +18,7 @@ import {
   cellKey,
   currentWeek,
   effectiveTime,
+  currentTermIndex,
   CLASS_COLORS,
   type ClassCell,
   type ClassColor,
@@ -131,6 +132,9 @@ export default function History() {
   const selectedEntries = entriesByDate.get(selected) ?? []
   const todayISO = isoOf(today)
 
+  const termsSet = (tt?.terms ?? []).some((t) => t?.start && t?.end)
+  const isHoliday = (date: Date) => termsSet && currentTermIndex(tt, date) < 0
+
   const classesForDate = (date: Date): ClassCell[] => {
     if (!tt) return []
     const wd = (date.getDay() + 6) % 7
@@ -141,6 +145,7 @@ export default function History() {
 
   // Evidence-coverage status for a day's pill: green=all classes recorded, yellow=some, red=none.
   const dayStatus = (date: Date): DayStatus => {
+    if (isHoliday(date)) return 'none'
     const iso = isoOf(date)
     const dayEntries = entriesByDate.get(iso) ?? []
     const classes = classesForDate(date)
@@ -284,6 +289,7 @@ export default function History() {
                 const isSelected = iso === selected
                 const isToday = iso === todayISO
                 const weekend = (d.getDay() + 6) % 7 > 4
+                const holiday = isHoliday(d)
                 return (
                   <button
                     key={i}
@@ -291,9 +297,11 @@ export default function History() {
                     className={`relative flex aspect-square flex-col items-center justify-center rounded-xl text-sm transition-colors ${
                       isSelected
                         ? 'bg-navy-800 font-bold text-white'
-                        : weekend
-                          ? 'text-navy-300 hover:bg-navy-50'
-                          : 'text-navy-700 hover:bg-navy-50'
+                        : holiday
+                          ? 'text-navy-200 hover:bg-navy-50'
+                          : weekend
+                            ? 'text-navy-300 hover:bg-navy-50'
+                            : 'text-navy-700 hover:bg-navy-50'
                     } ${isToday && !isSelected ? 'ring-1 ring-teal-400' : ''}`}
                   >
                     {d.getDate()}
