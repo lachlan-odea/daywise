@@ -1,5 +1,5 @@
 import app, { firebaseConfigured } from './firebase'
-import { cellKey, newId, type ClassCell, type Period, type Timetable } from './timetable'
+import { assignColors, cellKey, newId, type ClassCell, type Period, type Timetable } from './timetable'
 
 /** Whether AI extraction can be attempted (Firebase configured + app initialised). */
 export function aiAvailable(): boolean {
@@ -183,7 +183,7 @@ function toTimetable(ai: AIResult): Timetable {
     }
   }
 
-  return { periods, cells, timeOverrides, fortnightly: !!ai.fortnightly }
+  return assignColors({ periods, cells, timeOverrides, fortnightly: !!ai.fortnightly })
 }
 
 export async function aiExtractTimetable(file: File): Promise<Timetable> {

@@ -1,4 +1,4 @@
-import { cellKey, defaultTimetable, newId, type ClassCell, type Period, type Timetable } from './timetable'
+import { assignColors, cellKey, defaultTimetable, newId, type ClassCell, type Period, type Timetable } from './timetable'
 
 export type SourceKind = 'excel' | 'word' | 'pdf'
 
@@ -443,7 +443,7 @@ export function buildFromPlan(sources: NamedGrid[], plan: ImportPlan): Timetable
         if (text) cells[cellKey('A', id, di)] = splitClass(text)
       })
     })
-    return { periods, cells, fortnightly: false }
+    return assignColors({ periods, cells, fortnightly: false })
   }
 
   const rowsA = collectRows(sources[plan.weekA.sourceIndex].grid, plan.weekA.layout)
@@ -470,7 +470,7 @@ export function buildFromPlan(sources: NamedGrid[], plan: ImportPlan): Timetable
       if (text) cells[cellKey('B', id, di)] = splitClass(text)
     })
   }
-  return { periods, cells, fortnightly: true }
+  return assignColors({ periods, cells, fortnightly: true })
 }
 
 /** Class counts (overall and per week) for the review UI. */

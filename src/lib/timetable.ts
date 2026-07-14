@@ -86,6 +86,25 @@ function toISO(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
+/** Assigns a distinct colour to each unique class (same subject + class → same colour). */
+export function assignColors(tt: Timetable): Timetable {
+  const palette = Object.keys(CLASS_COLORS) as ClassColor[]
+  const map = new Map<string, ClassColor>()
+  let i = 0
+  const cells: Record<string, ClassCell> = {}
+  for (const [k, cell] of Object.entries(tt.cells)) {
+    const key = `${(cell.subject || '').trim().toLowerCase()}|${(cell.className || '').trim().toLowerCase()}`
+    let color = map.get(key)
+    if (!color) {
+      color = palette[i % palette.length]
+      map.set(key, color)
+      i++
+    }
+    cells[k] = { ...cell, color }
+  }
+  return { ...tt, cells }
+}
+
 /** Index (0–3) of the term containing `date`, or -1 if none (holiday / no calendar). */
 export function currentTermIndex(tt: Timetable | null, date: Date = new Date()): number {
   const iso = toISO(date)
