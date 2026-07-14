@@ -31,7 +31,7 @@ export default function Programs() {
   const [programs, setPrograms] = useState<Program[] | null>(null)
   const [showImport, setShowImport] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [groupBy, setGroupBy] = useState<GroupBy>('none')
+  const [groupBy, setGroupBy] = useState<GroupBy>('term')
 
   const atLimit = !!programs && programs.length >= maxPrograms
 
