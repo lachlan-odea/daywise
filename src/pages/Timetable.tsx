@@ -590,9 +590,19 @@ export default function Timetable() {
                 setTimeOverride(editCell.week, editCell.periodId, editCell.day, null)
                 setEditCell(null)
               }}
-              onSave={(cell, time) => {
+              onSave={(cell, time, applyColorAll) => {
                 setCell(editCell.week, editCell.periodId, editCell.day, cell)
                 setTimeOverride(editCell.week, editCell.periodId, editCell.day, time)
+                if (applyColorAll) {
+                  const keyOf = (c: ClassCell) =>
+                    `${(c.subject || '').trim().toLowerCase()}|${(c.className || '').trim().toLowerCase()}`
+                  const target = keyOf(cell)
+                  mutate((d) => {
+                    for (const k of Object.keys(d.cells)) {
+                      if (keyOf(d.cells[k]) === target) d.cells[k].color = cell.color
+                    }
+                  })
+                }
                 setEditCell(null)
               }}
             />
@@ -621,12 +631,13 @@ function CellEditor({
   initialOverride?: TimeSlot
   onClose: () => void
   onClear: () => void
-  onSave: (cell: ClassCell, time: TimeSlot | null) => void
+  onSave: (cell: ClassCell, time: TimeSlot | null, applyColorToMatching: boolean) => void
 }) {
   const [subject, setSubject] = useState(initial?.subject ?? '')
   const [className, setClassName] = useState(initial?.className ?? '')
   const [room, setRoom] = useState(initial?.room ?? '')
   const [color, setColor] = useState<ClassColor>(initial?.color ?? 'teal')
+  const [applyColorAll, setApplyColorAll] = useState(false)
   const [customTime, setCustomTime] = useState(!!initialOverride)
   const [start, setStart] = useState(initialOverride?.start ?? defaultTime.start)
   const [end, setEnd] = useState(initialOverride?.end ?? defaultTime.end)
@@ -658,7 +669,11 @@ function CellEditor({
               customTime && start && end && (start !== defaultTime.start || end !== defaultTime.end)
                 ? { start, end }
                 : null
-            onSave({ subject: subject.trim(), className: className.trim(), room: room.trim() || undefined, color }, override)
+            onSave(
+              { subject: subject.trim(), className: className.trim(), room: room.trim() || undefined, color },
+              override,
+              applyColorAll,
+            )
           }}
         >
           <label className="block">
@@ -690,6 +705,15 @@ function CellEditor({
                 />
               ))}
             </div>
+            <label className="mt-2.5 flex cursor-pointer items-center gap-2 text-xs font-medium text-navy-600">
+              <input
+                type="checkbox"
+                checked={applyColorAll}
+                onChange={(e) => setApplyColorAll(e.target.checked)}
+                className="h-4 w-4 rounded border-navy-300 text-teal-500 focus:ring-teal-300"
+              />
+              Apply this colour to all matching classes
+            </label>
           </div>
 
           {/* per-day bell time */}
