@@ -298,15 +298,15 @@ export default function TimetableImport({
     setBusy(true)
     try {
       if (aiAvailable()) {
-        setBusyMsg('Reading your timetable with AI…')
+        setBusyMsg('Reading your timetable with Curriculum Intelligence…')
         try {
           const tt = await aiExtractTimetable(file)
-          if (summarise(tt).classes === 0) throw new Error('AI found no classes')
+          if (summarise(tt).classes === 0) throw new Error('No classes found')
           setAiResult(tt)
           setStep('review')
           return
         } catch {
-          setAiError('AI extraction wasn’t available for this file — you can map the columns manually below.')
+          setAiError('Curriculum Intelligence couldn’t read this file — you can map the columns manually below.')
         }
       }
       setBusyMsg('Reading your file…')
@@ -405,7 +405,7 @@ export default function TimetableImport({
                     <p className="mt-1 text-sm text-navy-500">or click to browse — PDF, Word (.docx) or Excel (.xlsx)</p>
                     {aiAvailable() && (
                       <p className="mt-3 flex items-center gap-1.5 text-xs font-semibold text-teal-600">
-                        <Sparkles size={13} /> AI will read it for you
+                        <Sparkles size={13} /> Curriculum Intelligence will read it for you
                       </p>
                     )}
                   </>
@@ -427,7 +427,7 @@ export default function TimetableImport({
             <>
               <div className="mb-4 flex items-center gap-2 rounded-xl bg-teal-50 px-4 py-3 text-sm text-teal-800">
                 <Sparkles size={16} />
-                AI read your timetable — <b>{summarise(aiResult).periods}</b> periods,{' '}
+                Curriculum Intelligence read your timetable — <b>{summarise(aiResult).periods}</b> periods,{' '}
                 {aiResult.fortnightly ? (
                   <>
                     <b>{summarise(aiResult).weekA}</b> classes in Week A, <b>{summarise(aiResult).weekB}</b> in Week B.

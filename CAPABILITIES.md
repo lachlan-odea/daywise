@@ -146,6 +146,7 @@ the model.
 _Newest first. Each entry corresponds to work pushed to `main`._
 
 ### 2026-07-15
+- Timetable import: user-facing copy now says **Curriculum Intelligence** instead of "AI".
 - Beta build version is now **derived automatically** from git at build time (HEAD commit date +
   per-day commit count) — no manual bump; workflow checks out full history.
 - Added a **beta build version badge** in the header (`YYYY.MM.DD.NNN`), starting at `2026.07.15.001`.
