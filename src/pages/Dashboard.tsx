@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Mic, Sparkles, Waves, Plus, CalendarClock, Pencil, CalendarDays, Check } from 'lucide-react'
+import { Mic, Sparkles, Waves, Plus, CalendarClock, Pencil, CalendarDays, Check, NotebookPen } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useProfile } from '../hooks/useProfile'
 import {
@@ -15,6 +15,7 @@ import {
 } from '../lib/timetable'
 import { subscribePrograms, type Program } from '../lib/programs'
 import { subscribeEntries, type LessonEntry } from '../lib/entries'
+import { subscribePlanningDay, savePlanningNote, type PlanningNotes } from '../lib/planning'
 
 function todayIndex() {
   const d = new Date().getDay()
@@ -32,6 +33,10 @@ export default function Dashboard() {
   const [tt, setTt] = useState<Timetable | null>(null)
   const [programs, setPrograms] = useState<Program[] | null>(null)
   const [entries, setEntries] = useState<LessonEntry[] | null>(null)
+  const [planning, setPlanning] = useState<PlanningNotes>({})
+  const [editingNote, setEditingNote] = useState<string | null>(null)
+  const [draft, setDraft] = useState('')
+  const [savingNote, setSavingNote] = useState(false)
 
   const displayName = profile?.displayName || user?.displayName || user?.email?.split('@')[0] || 'Teacher'
   const firstName = displayName.split(' ')[0]
@@ -84,6 +89,32 @@ export default function Dashboard() {
     if (cell.room) q.set('room', cell.room)
     return `/app/record?${q.toString()}`
   }
+
+  useEffect(() => {
+    if (!user) return
+    return subscribePlanningDay(user.uid, todayISOStr, setPlanning)
+  }, [user, todayISOStr])
+
+  const startEditNote = (periodId: string) => {
+    setEditingNote(periodId)
+    setDraft(planning[periodId] ?? '')
+  }
+  const cancelNote = () => {
+    setEditingNote(null)
+    setDraft('')
+  }
+  const saveNote = async (periodId: string) => {
+    if (!user) return
+    setSavingNote(true)
+    try {
+      await savePlanningNote(user.uid, todayISOStr, periodId, draft)
+      setEditingNote(null)
+      setDraft('')
+    } finally {
+      setSavingNote(false)
+    }
+  }
+
   const lastNextSteps = entries?.[0]?.evidence?.nextSteps ?? []
   const evidenceCount =
     entries?.filter(
@@ -210,49 +241,113 @@ export default function Dashboard() {
                   }
 
                   const color = (cell.color ?? 'teal') as ClassColor
+                  const note = planning[p.id] ?? ''
+                  const isEditing = editingNote === p.id
                   return (
                     <div
                       key={p.id}
-                      className={`flex items-center gap-3 rounded-xl px-4 py-3 ${
-                        isNow ? 'bg-navy-800 text-white' : 'bg-cloud text-navy-700'
-                      }`}
+                      className={`rounded-xl ${isNow ? 'bg-navy-800 text-white' : 'bg-cloud text-navy-700'}`}
                     >
-                      <span className={`text-xs font-bold ${isNow ? 'text-teal-300' : 'text-navy-400'}`}>
-                        {p.label}
-                        {time.start ? ` · ${time.start}` : ''}
-                      </span>
-                      <span className="flex items-center gap-2 text-sm font-semibold">
-                        {!isNow && <span className={`h-2 w-2 rounded-full ${CLASS_COLORS[color].dot}`} />}
-                        {cell.subject || cell.className}
-                      </span>
-                      <span className={`ml-auto text-xs ${isNow ? 'text-navy-200' : 'text-navy-400'}`}>
-                        {cell.subject && cell.className ? cell.className : ''}
-                        {cell.room ? ` · ${cell.room}` : ''}
-                      </span>
-                      {isTeachingPeriod(p.label) &&
-                        !!time.start &&
-                        time.start <= nowHHMM &&
-                        (recordedToday.has(classKey(cell.subject, cell.className)) ? (
-                          <span
-                            className={`flex shrink-0 items-center gap-1 text-[11px] font-bold ${
-                              isNow ? 'text-teal-300' : 'text-teal-600'
-                            }`}
-                          >
-                            <Check size={13} strokeWidth={3} /> Recorded
-                          </span>
-                        ) : (
-                          <Link
-                            to={recordHref(cell)}
-                            className="flex h-7 shrink-0 items-center gap-1 rounded-full bg-teal-500 px-2.5 text-[11px] font-bold text-white hover:bg-teal-600"
-                            title="Record this lesson"
-                          >
-                            <Mic size={12} /> Record
-                          </Link>
-                        ))}
-                      {isNow && (
-                        <span className="flex items-center gap-1 rounded-full bg-teal-400 px-2 py-0.5 text-[10px] font-bold text-navy-950">
-                          <Waves size={10} /> Now
+                      <div className="flex items-center gap-3 px-4 py-3">
+                        <span className={`text-xs font-bold ${isNow ? 'text-teal-300' : 'text-navy-400'}`}>
+                          {p.label}
+                          {time.start ? ` · ${time.start}` : ''}
                         </span>
+                        <span className="flex items-center gap-2 text-sm font-semibold">
+                          {!isNow && <span className={`h-2 w-2 rounded-full ${CLASS_COLORS[color].dot}`} />}
+                          {cell.subject || cell.className}
+                        </span>
+                        <span className={`ml-auto text-xs ${isNow ? 'text-navy-200' : 'text-navy-400'}`}>
+                          {cell.subject && cell.className ? cell.className : ''}
+                          {cell.room ? ` · ${cell.room}` : ''}
+                        </span>
+                        <button
+                          onClick={() => (isEditing ? cancelNote() : startEditNote(p.id))}
+                          className={`flex h-7 shrink-0 items-center gap-1 rounded-full px-2.5 text-[11px] font-bold transition-colors ${
+                            note
+                              ? isNow
+                                ? 'bg-white/15 text-teal-200 hover:bg-white/25'
+                                : 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+                              : isNow
+                                ? 'text-navy-200 hover:bg-white/10'
+                                : 'text-navy-400 hover:bg-navy-100'
+                          }`}
+                          title={note ? 'Edit planning note' : 'Add planning note'}
+                        >
+                          <NotebookPen size={12} /> {note ? 'Note' : 'Plan'}
+                        </button>
+                        {isTeachingPeriod(p.label) &&
+                          !!time.start &&
+                          time.start <= nowHHMM &&
+                          (recordedToday.has(classKey(cell.subject, cell.className)) ? (
+                            <span
+                              className={`flex shrink-0 items-center gap-1 text-[11px] font-bold ${
+                                isNow ? 'text-teal-300' : 'text-teal-600'
+                              }`}
+                            >
+                              <Check size={13} strokeWidth={3} /> Recorded
+                            </span>
+                          ) : (
+                            <Link
+                              to={recordHref(cell)}
+                              className="flex h-7 shrink-0 items-center gap-1 rounded-full bg-teal-500 px-2.5 text-[11px] font-bold text-white hover:bg-teal-600"
+                              title="Record this lesson"
+                            >
+                              <Mic size={12} /> Record
+                            </Link>
+                          ))}
+                        {isNow && (
+                          <span className="flex items-center gap-1 rounded-full bg-teal-400 px-2 py-0.5 text-[10px] font-bold text-navy-950">
+                            <Waves size={10} /> Now
+                          </span>
+                        )}
+                      </div>
+
+                      {isEditing ? (
+                        <div className="px-4 pb-3">
+                          <textarea
+                            autoFocus
+                            value={draft}
+                            onChange={(e) => setDraft(e.target.value)}
+                            rows={3}
+                            placeholder="Planning notes for this lesson…"
+                            className="w-full rounded-lg border border-navy-200 bg-white p-2.5 text-sm text-navy-800 placeholder:text-navy-300 focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-100"
+                          />
+                          <div className="mt-2 flex items-center justify-end gap-2">
+                            <button
+                              onClick={cancelNote}
+                              className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${
+                                isNow ? 'text-navy-200 hover:bg-white/10' : 'text-navy-500 hover:bg-navy-100'
+                              }`}
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              onClick={() => saveNote(p.id)}
+                              disabled={savingNote}
+                              className="rounded-lg bg-teal-500 px-3 py-1.5 text-xs font-bold text-white hover:bg-teal-600 disabled:opacity-60"
+                            >
+                              {savingNote ? 'Saving…' : 'Save note'}
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        note && (
+                          <button
+                            onClick={() => startEditNote(p.id)}
+                            className="block w-full px-4 pb-3 text-left"
+                            title="Edit planning note"
+                          >
+                            <span
+                              className={`flex gap-1.5 rounded-lg px-3 py-2 text-sm whitespace-pre-wrap ${
+                                isNow ? 'bg-white/10 text-navy-100' : 'bg-white text-navy-600'
+                              }`}
+                            >
+                              <NotebookPen size={13} className="mt-0.5 shrink-0 opacity-60" />
+                              {note}
+                            </span>
+                          </button>
+                        )
                       )}
                     </div>
                   )

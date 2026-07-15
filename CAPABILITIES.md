@@ -127,6 +127,8 @@ the model.
   the current period is highlighted "Now".
 - Classes that have **started/passed** show a **Record** button (numbered teaching periods only)
   that opens Record Lesson pre-filled; once recorded it shows "Recorded".
+- **Planning notes** — add/edit a quick planning note per class on today's timetable (saved per
+  day, `users/{uid}/planning/{date}`); a saved note shows inline under the class.
 - Suggested next steps (from the last entry) and running stats.
 - "Upload your first program" prompt shown only until a program exists.
 
@@ -146,6 +148,7 @@ the model.
 _Newest first. Each entry corresponds to work pushed to `main`._
 
 ### 2026-07-15
+- Dashboard: **planning notes** per class on today's timetable (add/edit inline, saved per day).
 - Timetable import: user-facing copy now says **Curriculum Intelligence** instead of "AI".
 - Beta build version is now **derived automatically** from git at build time (HEAD commit date +
   per-day commit count) — no manual bump; workflow checks out full history.
