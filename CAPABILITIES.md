@@ -120,7 +120,11 @@ the model.
 
 ### 11. Dashboard
 - Time-of-day greeting; term/week (or "Holidays") pill linking to the timetable.
-- Today's timetable (live A/B week), suggested next steps (from the last entry), and running stats.
+- Today's timetable (live A/B week) showing **all periods** including breaks/free periods;
+  the current period is highlighted "Now".
+- Classes that have **started/passed** show a **Record** button (numbered teaching periods only)
+  that opens Record Lesson pre-filled; once recorded it shows "Recorded".
+- Suggested next steps (from the last entry) and running stats.
 - "Upload your first program" prompt shown only until a program exists.
 
 ---
@@ -141,6 +145,11 @@ _Newest first. Each entry corresponds to work pushed to `main`._
 ### 2026-07-15
 - PDF timetable import now uses **hybrid image + text** extraction (page image for layout +
   extracted text for exact wording) for better accuracy; Word/Excel remain text-only.
+- Stopped period/time descriptors (am, Roll Call, recess/lunch, numbers, times) being imported
+  as classes (prompt rule + safety-net filter).
+- Dashboard today's timetable now shows **all periods** (breaks/free included).
+- Dashboard: **Record** button on started/passed classes (numbered periods) → pre-filled Record
+  Lesson; shows "Recorded" once done.
 
 ### 2026-07-14
 - Timetable cell editor: option to **apply a colour to all matching classes**.

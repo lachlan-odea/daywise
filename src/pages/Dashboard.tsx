@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Mic, Sparkles, Waves, Plus, CalendarClock, Pencil, CalendarDays } from 'lucide-react'
+import { Mic, Sparkles, Waves, Plus, CalendarClock, Pencil, CalendarDays, Check } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useProfile } from '../hooks/useProfile'
 import {
@@ -20,6 +20,11 @@ function todayIndex() {
   const d = new Date().getDay()
   return d >= 1 && d <= 5 ? d - 1 : -1
 }
+
+/** Only numbered teaching periods (1, Period 1, P1…) are recordable — not roll call/breaks. */
+const isTeachingPeriod = (label: string) => /^(period\s*|p\s*|lesson\s*)?\d+$/i.test((label || '').trim())
+const classKey = (subject?: string, className?: string) =>
+  `${(subject || '').trim().toLowerCase()}|${(className || '').trim().toLowerCase()}`
 
 export default function Dashboard() {
   const { user } = useAuth()
@@ -68,6 +73,17 @@ export default function Dashboard() {
   const hasClassesToday = todaysPeriods.some((row) => row.cell)
 
   const hasTimetable = tt ? Object.keys(tt.cells).length > 0 : false
+  const todayISOStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+  const recordedToday = new Set(
+    (entries ?? []).filter((e) => e.date === todayISOStr).map((e) => classKey(e.subject, e.className)),
+  )
+  const recordHref = (cell: { subject?: string; className?: string; room?: string }) => {
+    const q = new URLSearchParams({ date: todayISOStr })
+    if (cell.subject) q.set('subject', cell.subject)
+    if (cell.className) q.set('class', cell.className)
+    if (cell.room) q.set('room', cell.room)
+    return `/app/record?${q.toString()}`
+  }
   const lastNextSteps = entries?.[0]?.evidence?.nextSteps ?? []
   const evidenceCount =
     entries?.filter(
@@ -213,6 +229,26 @@ export default function Dashboard() {
                         {cell.subject && cell.className ? cell.className : ''}
                         {cell.room ? ` · ${cell.room}` : ''}
                       </span>
+                      {isTeachingPeriod(p.label) &&
+                        !!time.start &&
+                        time.start <= nowHHMM &&
+                        (recordedToday.has(classKey(cell.subject, cell.className)) ? (
+                          <span
+                            className={`flex shrink-0 items-center gap-1 text-[11px] font-bold ${
+                              isNow ? 'text-teal-300' : 'text-teal-600'
+                            }`}
+                          >
+                            <Check size={13} strokeWidth={3} /> Recorded
+                          </span>
+                        ) : (
+                          <Link
+                            to={recordHref(cell)}
+                            className="flex h-7 shrink-0 items-center gap-1 rounded-full bg-teal-500 px-2.5 text-[11px] font-bold text-white hover:bg-teal-600"
+                            title="Record this lesson"
+                          >
+                            <Mic size={12} /> Record
+                          </Link>
+                        ))}
                       {isNow && (
                         <span className="flex items-center gap-1 rounded-full bg-teal-400 px-2 py-0.5 text-[10px] font-bold text-navy-950">
                           <Waves size={10} /> Now
