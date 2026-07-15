@@ -62,12 +62,10 @@ export default function Dashboard() {
 
   // Today's classes drawn from the saved timetable, for the current (A/B) week.
   const week = currentWeek(tt)
-  const todaysClasses =
-    today >= 0 && tt
-      ? tt.periods
-          .map((p) => ({ p, cell: tt.cells[cellKey(week, p.id, today)] }))
-          .filter((row) => row.cell)
-      : []
+  // All of today's periods (including breaks / free periods), not just those with a class.
+  const todaysPeriods =
+    today >= 0 && tt ? tt.periods.map((p) => ({ p, cell: tt.cells[cellKey(week, p.id, today)] })) : []
+  const hasClassesToday = todaysPeriods.some((row) => row.cell)
 
   const hasTimetable = tt ? Object.keys(tt.cells).length > 0 : false
   const lastNextSteps = entries?.[0]?.evidence?.nextSteps ?? []
@@ -162,16 +160,40 @@ export default function Dashboard() {
                   <CalendarClock size={16} /> Set up timetable
                 </Link>
               </div>
-            ) : todaysClasses.length === 0 ? (
+            ) : !hasClassesToday ? (
               <div className="rounded-xl bg-cloud p-6 text-center text-sm text-navy-500">
                 No classes scheduled for today.
               </div>
             ) : (
               <div className="space-y-2">
-                {todaysClasses.map(({ p, cell }) => {
+                {todaysPeriods.map(({ p, cell }) => {
                   const time = effectiveTime(tt!, p, week, today)
                   const isNow = !!(time.start && time.end && time.start <= nowHHMM && nowHHMM < time.end)
-                  const color = (cell!.color ?? 'teal') as ClassColor
+
+                  // Break / free period — shown for context.
+                  if (!cell) {
+                    return (
+                      <div
+                        key={p.id}
+                        className={`flex items-center gap-3 rounded-xl border border-dashed px-4 py-2 ${
+                          isNow ? 'border-teal-300 bg-teal-50' : 'border-navy-100 bg-white'
+                        }`}
+                      >
+                        <span className="text-xs font-bold text-navy-400">
+                          {p.label}
+                          {time.start ? ` · ${time.start}` : ''}
+                        </span>
+                        <span className="ml-auto text-xs text-navy-300">—</span>
+                        {isNow && (
+                          <span className="flex items-center gap-1 rounded-full bg-teal-400 px-2 py-0.5 text-[10px] font-bold text-navy-950">
+                            <Waves size={10} /> Now
+                          </span>
+                        )}
+                      </div>
+                    )
+                  }
+
+                  const color = (cell.color ?? 'teal') as ClassColor
                   return (
                     <div
                       key={p.id}
@@ -185,11 +207,11 @@ export default function Dashboard() {
                       </span>
                       <span className="flex items-center gap-2 text-sm font-semibold">
                         {!isNow && <span className={`h-2 w-2 rounded-full ${CLASS_COLORS[color].dot}`} />}
-                        {cell!.subject || cell!.className}
+                        {cell.subject || cell.className}
                       </span>
                       <span className={`ml-auto text-xs ${isNow ? 'text-navy-200' : 'text-navy-400'}`}>
-                        {cell!.subject && cell!.className ? cell!.className : ''}
-                        {cell!.room ? ` · ${cell!.room}` : ''}
+                        {cell.subject && cell.className ? cell.className : ''}
+                        {cell.room ? ` · ${cell.room}` : ''}
                       </span>
                       {isNow && (
                         <span className="flex items-center gap-1 rounded-full bg-teal-400 px-2 py-0.5 text-[10px] font-bold text-navy-950">
