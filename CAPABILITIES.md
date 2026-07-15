@@ -70,6 +70,8 @@ the model.
 - **Import from PDF / Word / Excel**:
   - AI extraction (Gemini) is primary; a client-side heuristic parser + manual column mapping
     is the fallback. Everything is parsed in-browser.
+  - **PDF uses hybrid image + text extraction** — each page is rendered to an image (for true
+    2-D layout) and sent alongside the extracted text (for exact wording); Word/Excel use text.
   - Detects fortnightly Week A/B layouts, multi-line cells, and per-day times.
   - Review step with a **drag-and-drop editable preview** before import.
 
@@ -135,6 +137,10 @@ the model.
 ## Changelog (closed beta, pre-v0.1)
 
 _Newest first. Each entry corresponds to work pushed to `main`._
+
+### 2026-07-15
+- PDF timetable import now uses **hybrid image + text** extraction (page image for layout +
+  extracted text for exact wording) for better accuracy; Word/Excel remain text-only.
 
 ### 2026-07-14
 - Timetable cell editor: option to **apply a colour to all matching classes**.

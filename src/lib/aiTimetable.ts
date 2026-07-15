@@ -10,16 +10,24 @@ export function aiAvailable(): boolean {
 
 const norm = (v: unknown) => String(v ?? '').replace(/[ \t]+/g, ' ').trim()
 
-async function pdfText(file: File): Promise<string> {
+/**
+ * Extracts both the positioned text and a rendered image of each PDF page (up to 3).
+ * The image gives Gemini the true 2-D layout; the text gives exact wording (codes, times).
+ */
+async function pdfExtract(file: File): Promise<{ text: string; images: string[] }> {
   const pdfjsLib = await import('pdfjs-dist')
   pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
     'pdfjs-dist/build/pdf.worker.min.mjs',
     import.meta.url,
   ).toString()
   const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise
-  let out = ''
-  for (let p = 1; p <= pdf.numPages; p++) {
+  const pageCount = Math.min(pdf.numPages, 3)
+  let text = ''
+  const images: string[] = []
+  for (let p = 1; p <= pageCount; p++) {
     const page = await pdf.getPage(p)
+
+    // Text (line-clustered by y-position).
     const content = await page.getTextContent()
     const items = (content.items as { str: string; transform: number[] }[])
       .map((it) => ({ x: it.transform[4], y: Math.round(it.transform[5]), str: it.str }))
@@ -39,9 +47,22 @@ async function pdfText(file: File): Promise<string> {
       }
     }
     if (line) lines.push(line)
-    out += lines.join('\n') + '\n\n'
+    text += lines.join('\n') + '\n\n'
+
+    // Rendered image (bounded to ~1600px wide, JPEG to keep the payload compact).
+    const base = page.getViewport({ scale: 1 })
+    const scale = Math.min(2, 1600 / base.width)
+    const viewport = page.getViewport({ scale })
+    const canvas = document.createElement('canvas')
+    canvas.width = Math.ceil(viewport.width)
+    canvas.height = Math.ceil(viewport.height)
+    const ctx = canvas.getContext('2d')
+    if (ctx) {
+      await page.render({ canvas, canvasContext: ctx, viewport }).promise
+      images.push(canvas.toDataURL('image/jpeg', 0.85).split(',')[1])
+    }
   }
-  return out
+  return { text, images }
 }
 
 async function excelText(file: File): Promise<string> {
@@ -71,7 +92,7 @@ async function wordText(file: File): Promise<string> {
 
 export async function extractTextForAI(file: File): Promise<string> {
   const name = file.name.toLowerCase()
-  if (name.endsWith('.pdf')) return pdfText(file)
+  if (name.endsWith('.pdf')) return (await pdfExtract(file)).text
   if (name.endsWith('.xlsx') || name.endsWith('.xls') || name.endsWith('.csv')) return excelText(file)
   if (name.endsWith('.docx') || name.endsWith('.doc')) return wordText(file)
   throw new Error('Unsupported file type.')
@@ -187,10 +208,26 @@ function toTimetable(ai: AIResult): Timetable {
 }
 
 export async function aiExtractTimetable(file: File): Promise<Timetable> {
-  const text = await extractTextForAI(file)
-  if (!text.trim()) throw new Error('No readable text found in the file.')
   const model = await getModel()
-  const result = await model.generateContent(`${PROMPT}\n\nTIMETABLE TEXT:\n${text.slice(0, 40000)}`)
+  const isPdf = file.name.toLowerCase().endsWith('.pdf')
+
+  // PDF → hybrid: page image(s) for layout + extracted text for exact wording.
+  // Word/Excel → text only (already well-structured).
+  let request: (string | { inlineData: { mimeType: string; data: string } })[]
+  if (isPdf) {
+    const { text, images } = await pdfExtract(file)
+    if (!text.trim() && !images.length) throw new Error('No readable content found in the file.')
+    request = [
+      ...images.map((data) => ({ inlineData: { mimeType: 'image/jpeg', data } })),
+      `${PROMPT}\n\nUse the timetable IMAGE(S) above to understand the visual layout (which class sits under which day and period, Week A/B blocks, merged cells). Use the TEXT below for exact wording — subjects, class codes, rooms and times. Prefer the text for spelling and the image for placement.\n\nTIMETABLE TEXT:\n${text.slice(0, 40000)}`,
+    ]
+  } else {
+    const text = await extractTextForAI(file)
+    if (!text.trim()) throw new Error('No readable text found in the file.')
+    request = [`${PROMPT}\n\nTIMETABLE TEXT:\n${text.slice(0, 40000)}`]
+  }
+
+  const result = await model.generateContent(request)
   const raw = result.response.text()
   let parsed: AIResult
   try {
