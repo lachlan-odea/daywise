@@ -92,6 +92,7 @@ the model.
   using the **Curriculum Intelligence v2.0 "scribe, not witness"** prompt: program annotation,
   assessment evidence, differentiation, reflection, next-lesson actions, and outcomes, with a
   confidence rating.
+- Student names are anonymised in evidence as **first name + surname initial** (e.g. "Lachlan O").
 - Reviewable/editable before saving; gentle hints when reflection/next-steps come back empty.
 - Can pre-fill subject/class/date when launched from the History day view.
 - Saves to the searchable diary (`users/{uid}/entries`).
@@ -143,6 +144,7 @@ the model.
 _Newest first. Each entry corresponds to work pushed to `main`._
 
 ### 2026-07-15
+- Record Lesson: student names **anonymised** in generated evidence (first name + surname initial).
 - PDF timetable import now uses **hybrid image + text** extraction (page image for layout +
   extracted text for exact wording) for better accuracy; Word/Excel remain text-only.
 - Stopped period/time descriptors (am, Roll Call, recess/lunch, numbers, times) being imported
