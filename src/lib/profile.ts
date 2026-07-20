@@ -14,6 +14,8 @@ export interface UserProfile {
   /** Australian state/territory (e.g. NSW) — used for curriculum context. */
   state?: string
   plan?: Plan
+  /** Weekly progress/reminder email opt-in. Undefined is treated as opted-in. */
+  emailReminders?: boolean
   createdAt?: Timestamp
   lastLoginAt?: Timestamp
 }

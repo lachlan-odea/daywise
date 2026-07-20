@@ -124,6 +124,11 @@ the model.
 ### 10. Notifications & admin
 - **In-app announcements** — a broadcast shown to every signed-in user in the header
   **notification bell** (unread badge, per-user "mark as read", newest first).
+- **Weekly progress email** — a Friday-afternoon (AU) reminder emailing each teacher their
+  week's stats (lessons this week, total recorded, classes) and a prompt to record. Runs as a
+  GitHub Actions cron job → Firebase Admin SDK → SendGrid (no server/Blaze). Opt-out via
+  **Settings → Notifications** (`emailReminders`) or the email's unsubscribe link (SendGrid group).
+  Setup steps in `EMAIL_REMINDERS_SETUP.md`.
 - **Hidden admin page** (`/app/admin`, in the profile menu) for allow-listed admins. Gated
   client-side (`ADMIN_EMAILS`) and enforced by Firestore rules. Two tabs:
   - **Notifications** — compose, publish, hide/show, and delete announcements.
@@ -162,6 +167,8 @@ the model.
 _Newest first. Each entry corresponds to work pushed to `main`._
 
 ### 2026-07-15
+- **Weekly progress reminder emails** (Fridays, AU) via GitHub Actions + SendGrid; Settings toggle
+  + unsubscribe. Added `emailReminders` profile flag; setup in `EMAIL_REMINDERS_SETUP.md`.
 - Admin: **App usage** dashboard — total users, program/timetable adoption, lessons recorded, and
   a per-user table (plan, school/state, joined, last active, program ✓, timetable ✓, lessons).
   Added an admin read rule for `/users/**`.

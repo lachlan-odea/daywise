@@ -12,6 +12,7 @@ import {
   Building2,
   Mail,
   Crown,
+  Bell,
   type LucideIcon,
 } from 'lucide-react'
 import { useAuth, authErrorMessage } from '../context/AuthContext'
@@ -141,6 +142,10 @@ export default function Settings() {
   const [profileMsg, setProfileMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const seeded = useRef(false)
 
+  /* communication preferences */
+  const [emailReminders, setEmailReminders] = useState(true)
+  const [savingComms, setSavingComms] = useState(false)
+
   useEffect(() => {
     // Wait until the Firestore profile has finished loading before seeding the
     // form — otherwise school/role/phone (which live only in the profile) get
@@ -150,9 +155,24 @@ export default function Settings() {
       setSchool(profile?.school ?? '')
       setRole(profile?.role ?? '')
       setStateLoc(profile?.state ?? '')
+      setEmailReminders(profile?.emailReminders !== false) // default opted-in
       seeded.current = true
     }
   }, [profile, profileLoading, user])
+
+  const toggleReminders = async () => {
+    if (!user) return
+    const next = !emailReminders
+    setEmailReminders(next)
+    setSavingComms(true)
+    try {
+      await updateUserProfileDoc(user.uid, { emailReminders: next })
+    } catch {
+      setEmailReminders(!next) // revert on failure
+    } finally {
+      setSavingComms(false)
+    }
+  }
 
   const saveProfile = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -237,6 +257,7 @@ export default function Settings() {
             {[
               { href: '#profile', label: 'Profile', icon: UserIcon },
               { href: '#security', label: 'Account & security', icon: ShieldCheck },
+              { href: '#notifications', label: 'Notifications', icon: Bell },
               { href: '#subscription', label: 'Subscription', icon: CreditCard },
               { href: '#danger', label: 'Danger zone', icon: AlertTriangle },
             ].map((s) => (
@@ -360,6 +381,38 @@ export default function Settings() {
                 </div>
               )}
             </div>
+          </SectionCard>
+
+          {/* NOTIFICATIONS */}
+          <SectionCard id="notifications" icon={Bell} title="Notifications" desc="How daywise keeps in touch.">
+            <div className="flex items-center justify-between gap-4 rounded-2xl border border-navy-100 bg-cloud/40 p-4">
+              <div>
+                <p className="text-sm font-bold text-navy-900">Weekly progress email</p>
+                <p className="mt-0.5 text-sm text-navy-500">
+                  A Friday summary of your week with a gentle prompt to record any lessons you haven’t yet.
+                </p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={emailReminders}
+                aria-label="Weekly progress email"
+                onClick={toggleReminders}
+                disabled={savingComms || !firebaseConfigured}
+                className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:opacity-60 ${
+                  emailReminders ? 'bg-teal-500' : 'bg-navy-200'
+                }`}
+              >
+                <span
+                  className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
+                    emailReminders ? 'translate-x-5' : 'translate-x-0.5'
+                  }`}
+                />
+              </button>
+            </div>
+            <p className="mt-3 text-xs text-navy-400">
+              You can also unsubscribe directly from any email. Account and security notices are always sent.
+            </p>
           </SectionCard>
 
           {/* SUBSCRIPTION */}
