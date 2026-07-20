@@ -8,10 +8,12 @@ export interface UserUsage {
   email: string | null
   plan?: string
   school?: string
+  state?: string
   hasProgram: boolean
   hasTimetable: boolean
   lessonCount: number
   createdAt: Date | null
+  lastLoginAt: Date | null
 }
 
 export interface UsageStats {
@@ -47,10 +49,12 @@ export async function getUsageStats(): Promise<UsageStats> {
         email: p.email ?? null,
         plan: p.plan,
         school: p.school,
+        state: p.state,
         hasProgram: programs.data().count > 0,
         hasTimetable: Object.keys(cells).length > 0,
         lessonCount: entries.data().count,
         createdAt: p.createdAt?.toDate?.() ?? null,
+        lastLoginAt: p.lastLoginAt?.toDate?.() ?? null,
       } satisfies UserUsage
     }),
   )

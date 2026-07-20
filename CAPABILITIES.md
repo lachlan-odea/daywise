@@ -128,8 +128,8 @@ the model.
   client-side (`ADMIN_EMAILS`) and enforced by Firestore rules. Two tabs:
   - **Notifications** — compose, publish, hide/show, and delete announcements.
   - **App usage** — total users, how many have a program / a timetable, total lessons recorded,
-    plus a per-user table (program ✓, timetable ✓, lesson count). Uses server-side aggregate
-    counts; admins have read access to all `/users/**` via a Firestore rule.
+    plus a per-user table (plan, school/state, joined, last active, program ✓, timetable ✓, lesson
+    count). Uses server-side aggregate counts; admins have read access to all `/users/**`.
 
 ### 11. Progressive Web App
 - Installable PWA scoped to the app (`/app`) — launches into the dashboard, with app icons and an
@@ -163,7 +163,8 @@ _Newest first. Each entry corresponds to work pushed to `main`._
 
 ### 2026-07-15
 - Admin: **App usage** dashboard — total users, program/timetable adoption, lessons recorded, and
-  a per-user table. Added an admin read rule for `/users/**`.
+  a per-user table (plan, school/state, joined, last active, program ✓, timetable ✓, lessons).
+  Added an admin read rule for `/users/**`.
 - **In-app announcements**: header notification bell + hidden admin page (`/app/admin`) to
   broadcast a message to all users. New `announcements` Firestore collection + rules (admins only).
 - Reordered the app nav: Dashboard, Diary, Record Lesson, Timetable, Programs, Data & Reports.
