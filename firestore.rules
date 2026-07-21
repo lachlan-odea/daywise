@@ -10,7 +10,7 @@ service cloud.firestore {
     // Keep this admin list in sync with ADMIN_EMAILS in src/lib/admin.ts.
     function isAdmin() {
       return request.auth != null
-        && request.auth.token.email in ['lachlan.odea@outlook.com', 'admin@projectdaybook.com', 'james.mcclelland7@det.nsw.edu.au'];
+        && request.auth.token.email in ['lachlan.odea@outlook.com', 'admin@projectdaybook.com', 'james.mcclelland7@det.nsw.edu.au', 'buddy@projectdaybook.com'];
     }
 
     match /users/{userId}/{document=**} {
