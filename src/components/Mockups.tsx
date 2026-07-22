@@ -13,7 +13,7 @@ import {
 import type { ReactNode } from 'react'
 
 /** A macOS-style browser/app chrome frame that wraps every product mockup. */
-export function AppWindow({ children, label = 'app.daywise.com' }: { children: ReactNode; label?: string }) {
+export function AppWindow({ children, label = 'app.daywise.au' }: { children: ReactNode; label?: string }) {
   return (
     <div className="overflow-hidden rounded-2xl border border-navy-100 bg-white shadow-card">
       <div className="flex items-center gap-2 border-b border-navy-100 bg-navy-50/70 px-4 py-3">

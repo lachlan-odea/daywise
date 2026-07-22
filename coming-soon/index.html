@@ -177,7 +177,48 @@
       footer .tagline { color: var(--teal-soft); font-weight: 700; }
 
       @keyframes rise { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
-      @media (prefers-reduced-motion: reduce) { * { animation: none !important; } .logo, .pill, h1, .sub, form, .chips { opacity: 1; } }
+      /* product mockup */
+      .showcase { position: relative; width: 100%; max-width: 640px; margin: 60px auto 4px; opacity: 0; animation: rise .8s .7s forwards; }
+      .appwin { border-radius: 16px; overflow: hidden; background: #fff; box-shadow: 0 30px 70px -20px rgba(3, 10, 30, .65); text-align: left; }
+      .chrome { display: flex; align-items: center; gap: 7px; padding: 11px 14px; background: #f5f7fc; border-bottom: 1px solid #e6eaf3; }
+      .cdot { width: 11px; height: 11px; border-radius: 50%; }
+      .cdot.r { background: #ff5f57; } .cdot.y { background: #febc2e; } .cdot.g { background: #28c840; }
+      .url { margin: 0 auto; display: flex; align-items: center; gap: 7px; background: #fff; color: #8894b0; font-size: 12px; font-weight: 500; padding: 5px 12px; border-radius: 7px; border: 1px solid #e6eaf3; }
+      .url .live { width: 6px; height: 6px; border-radius: 50%; background: #2fba93; }
+      .appbody { display: grid; grid-template-columns: 56px 1fr; background: #eef2fb; }
+      .rail { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 18px 0; background: #fff; border-right: 1px solid #e6eaf3; }
+      .ri { width: 32px; height: 32px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #8894b0; }
+      .ri.active { background: #182957; color: #fff; }
+      .appmain { padding: 18px; min-width: 0; }
+      .appmain .top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+      .appmain .eyebrow { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: #0d9488; }
+      .appmain .greet { font-size: 17px; font-weight: 800; color: #132145; margin-top: 2px; }
+      .ready { display: inline-flex; align-items: center; gap: 5px; border: 1px solid #96e5cd; background: #eafaf5; color: #0d9488; font-size: 11px; font-weight: 700; padding: 5px 10px; border-radius: 999px; white-space: nowrap; }
+      .ttlabel { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #8894b0; margin: 16px 0 8px; }
+      .trow { display: flex; align-items: center; gap: 10px; padding: 11px 13px; border-radius: 11px; background: #fff; margin-bottom: 7px; font-size: 12px; }
+      .trow .p { font-weight: 700; color: #5b6b8c; white-space: nowrap; }
+      .trow .name { font-weight: 700; color: #132145; }
+      .trow .topic { margin-left: auto; color: #8894b0; }
+      .trow.now { background: #132145; }
+      .trow.now .p { color: #5dd2b1; } .trow.now .name { color: #fff; } .trow.now .topic { color: #aebfe8; margin-left: auto; }
+      .nowpill { display: inline-flex; align-items: center; gap: 4px; background: #2fba93; color: #062a22; font-size: 10px; font-weight: 800; padding: 3px 9px; border-radius: 999px; }
+      .appcards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+      .appcard { border: 1px solid #d6def4; border-radius: 12px; padding: 13px; }
+      .appcard.rec { background: #f0fdfa; border-color: #96e5cd; }
+      .ct { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 800; color: #132145; }
+      .cs { font-size: 11px; color: #8894b0; margin-top: 5px; line-height: 1.4; }
+      .inputline { margin-top: 9px; height: 26px; border: 1px solid #cfe9e0; border-radius: 8px; background: #fff; }
+      .tags { margin-top: 8px; display: flex; gap: 5px; }
+      .tag { font-size: 10px; font-weight: 700; color: #3654a8; background: #eef2fb; padding: 2px 7px; border-radius: 5px; }
+      .fbadge { position: absolute; display: flex; align-items: center; gap: 9px; background: #fff; border-radius: 12px; padding: 9px 13px; box-shadow: 0 16px 40px -12px rgba(3, 10, 30, .55); }
+      .fbadge .fi { width: 30px; height: 30px; border-radius: 9px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+      .fbadge .ft { display: block; font-size: 12px; font-weight: 800; color: #132145; line-height: 1.15; }
+      .fbadge .fs { display: block; font-size: 11px; color: #8894b0; margin-top: 2px; }
+      .fbadge.f1 { top: 58px; left: -20px; } .fbadge.f1 .fi { background: #eafaf5; color: #0d9488; }
+      .fbadge.f2 { bottom: 30px; right: -20px; } .fbadge.f2 .fi { background: #eef2fb; color: #3654a8; }
+      @media (max-width: 600px) { .fbadge { display: none; } .appcards { grid-template-columns: 1fr; } }
+
+      @media (prefers-reduced-motion: reduce) { * { animation: none !important; } .logo, .pill, h1, .sub, form, .chips, .showcase { opacity: 1; } }
     </style>
   </head>
   <body>
@@ -219,6 +260,58 @@
         <span class="chip">Curriculum-aligned evidence</span>
         <span class="chip">Your searchable teaching diary</span>
         <span class="chip">Built for Australian teachers</span>
+      </div>
+
+      <!-- product mockup -->
+      <div class="showcase">
+        <div class="appwin">
+          <div class="chrome">
+            <span class="cdot r"></span><span class="cdot y"></span><span class="cdot g"></span>
+            <span class="url"><span class="live"></span> app.daywise.au</span>
+          </div>
+          <div class="appbody">
+            <div class="rail">
+              <span class="ri active"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg></span>
+              <span class="ri"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/></svg></span>
+              <span class="ri"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></span>
+              <span class="ri"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9M13 17V5M8 17v-3"/></svg></span>
+            </div>
+            <div class="appmain">
+              <div class="top">
+                <div>
+                  <p class="eyebrow">Thursday, 2 July</p>
+                  <p class="greet">Good morning, Sarah</p>
+                </div>
+                <span class="ready"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.9 6.1L20 10l-6.1 1.9L12 18l-1.9-6.1L4 10l6.1-1.9z"/></svg> 3 lessons ready</span>
+              </div>
+              <p class="ttlabel">Today's timetable</p>
+              <div class="trow now"><span class="p">P1 · 9:05</span><span class="name">Year 9 Science</span><span class="topic">Forces &amp; Motion</span><span class="nowpill">Now</span></div>
+              <div class="trow"><span class="p">P2 · 10:00</span><span class="name">Year 7 English</span><span class="topic">Persuasive writing</span></div>
+              <div class="trow"><span class="p">P4 · 12:30</span><span class="name">Year 10 Maths</span><span class="topic">Quadratics</span></div>
+              <div class="appcards">
+                <div class="appcard rec">
+                  <span class="ct"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg> Record last lesson</span>
+                  <p class="cs">Tap to capture Year 9 Science by voice or text.</p>
+                  <div class="inputline"></div>
+                </div>
+                <div class="appcard">
+                  <span class="ct"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.9 6.1L20 10l-6.1 1.9L12 18l-1.9-6.1L4 10l6.1-1.9z"/></svg> Suggested next</span>
+                  <p class="cs">Momentum &amp; collisions — from today's Forces lesson.</p>
+                  <div class="tags"><span class="tag">SC4-1</span><span class="tag">Prac</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="fbadge f1">
+          <span class="fi"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg></span>
+          <span><span class="ft">Lesson recorded</span><span class="fs">38 seconds of voice</span></span>
+        </div>
+        <div class="fbadge f2">
+          <span class="fi"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.9 6.1L20 10l-6.1 1.9L12 18l-1.9-6.1L4 10l6.1-1.9z"/></svg></span>
+          <span><span class="ft">Evidence written</span><span class="fs">4 items · 0 admin</span></span>
+        </div>
       </div>
     </main>
 
