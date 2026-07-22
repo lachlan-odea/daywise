@@ -95,6 +95,11 @@ the model.
   assessment evidence, differentiation, reflection, next-lesson actions, and outcomes, with a
   confidence rating.
 - Student names are anonymised in evidence as **first name + surname initial** (e.g. "Lachlan O").
+- **Class → program linking:** matching is scoped to the program(s) a *class* follows, not just
+  its subject. The first time you record for a class, you confirm which program(s) it follows
+  (pre-suggested by subject) and it's remembered (`users/{uid}/meta/classPrograms`); later
+  recordings match only within that class's programs. Falls back to subject match if unlinked.
+  Returned outcomes are constrained to the matched lesson so a code can't spread across lessons.
 - Reviewable/editable before saving; gentle hints when reflection/next-steps come back empty.
 - Can pre-fill subject/class/date when launched from the History day view.
 - Saves to the searchable diary (`users/{uid}/entries`).
@@ -165,6 +170,13 @@ the model.
 ## Changelog (closed beta, pre-v0.1)
 
 _Newest first. Each entry corresponds to work pushed to `main`._
+
+### 2026-07-22
+- Record Lesson now matches against the **program(s) a class follows** (class → program link set
+  at record time), instead of any program sharing the subject — fixes outcomes/lessons bleeding
+  across classes. Outcomes are also constrained to the matched lesson.
+- **Fixed the diary attaching one entry to two classes** that share a subject (e.g. SEMa269 and
+  SEMa268): entry↔class matching now requires the class name to match, not just the subject.
 
 ### 2026-07-15
 - **Weekly progress reminder emails** (Fridays, AU) via GitHub Actions + SendGrid; Settings toggle

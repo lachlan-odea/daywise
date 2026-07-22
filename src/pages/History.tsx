@@ -92,12 +92,18 @@ function recordHref(dateISO: string, cell?: { subject?: string; className?: stri
 const isTeachingPeriod = (label: string) => /^(period\s*|p\s*|lesson\s*)?\d+$/i.test((label || '').trim())
 
 const overview = (e: LessonEntry) => e.evidence?.annotations?.trim() || e.note?.trim() || '—'
+// Attach an entry to a timetable cell. When both the entry and the cell name a class,
+// the class name must match — otherwise two classes under the same subject (e.g.
+// SEMa269 and SEMa268) would both claim the same entry. Falls back to subject/class
+// matching when a class name is missing.
 const sameClass = (e: LessonEntry, cell: { subject: string; className: string }) => {
   const s = (x?: string) => (x ?? '').trim().toLowerCase()
-  return (
-    (!!s(e.subject) && s(e.subject) === s(cell.subject)) ||
-    (!!s(e.className) && s(e.className) === s(cell.className))
-  )
+  const eSub = s(e.subject)
+  const eCls = s(e.className)
+  const cSub = s(cell.subject)
+  const cCls = s(cell.className)
+  if (eCls && cCls) return eCls === cCls && (!eSub || !cSub || eSub === cSub)
+  return (!!eSub && eSub === cSub) || (!!eCls && eCls === cCls)
 }
 
 export default function History() {

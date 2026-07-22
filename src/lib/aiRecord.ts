@@ -50,7 +50,7 @@ CURRICULUM CONTEXT
 Use the supplied program, lesson, learning sequence, learning intention, success criteria and curriculum outcome information as context only. It may help you understand what lesson was taught, the intended focus, relevant outcomes and terminology. Curriculum context must NOT be treated as evidence that planned learning actually occurred. A planned activity, learning intention, success criterion or linked outcome is NOT evidence that it was achieved. The teacher's recorded recap is the primary evidence of what occurred.
 
 OUTCOMES
-Identify curriculum outcomes genuinely relevant to the teaching described. Use outcome codes from the supplied context. Do not invent outcome codes. Do not include an outcome simply because it exists in the broader program. Only include outcomes reasonably connected to the content or activity the teacher described. Return outcome CODES only.
+Identify curriculum outcomes genuinely relevant to the teaching described. Use outcome codes from the supplied context. Do not invent outcome codes. Only return outcomes that belong to the single matched lesson (matchedLessonId) — do NOT include outcomes drawn from other candidate lessons, even if they seem related. Do not include an outcome simply because it exists in the broader program. Only include outcomes reasonably connected to the content or activity the teacher described. Return outcome CODES only.
 
 PROGRAM ANNOTATION (field: annotations)
 A concise professional record of what was taught and what occurred: main learning focus; relevant revision/starter activities; teaching or modelling that occurred; activities students completed; meaningful changes from the planned lesson where recorded; preserve specific resources or platforms named by the teacher. Stay close to the teacher's account. Do not evaluate the success of the lesson unless the teacher provided evidence. Do not write generic statements ("The lesson effectively addressed the outcomes", "Students engaged well", "The transition was smooth", "The lesson was successful") unless directly supported.
@@ -146,13 +146,25 @@ export async function generateEvidence(params: {
   const clean = (v?: string) => (v ?? '').trim()
   const arr = (v?: string[]) => (Array.isArray(v) ? v.map((s) => String(s).trim()).filter(Boolean) : [])
 
+  // Keep outcomes tied to the matched lesson: when a lesson matched, constrain the
+  // returned outcomes to that lesson's own outcomes so a code can't spread across
+  // lessons. (If the intersection is empty — e.g. differing code formats — fall back
+  // to the model's list rather than dropping everything.)
+  const rawOutcomes = arr(parsed.outcomes)
+  const norm = (s: string) => s.trim().toLowerCase()
+  const lessonOutcomes = match?.outcomes ?? []
+  const scopedOutcomes = match
+    ? rawOutcomes.filter((o) => lessonOutcomes.some((lo) => norm(lo) === norm(o)))
+    : rawOutcomes
+  const outcomes = match && scopedOutcomes.length === 0 ? rawOutcomes : scopedOutcomes
+
   return {
     matchedProgramId: match?.programId ?? null,
     matchedProgramName: match?.programName ?? null,
     matchedLessonId: match?.lessonId ?? null,
     matchedLessonTitle: match?.title ?? '',
     confidence: (['high', 'medium', 'low'] as const).includes(parsed.confidence as 'high') ? (parsed.confidence as GeneratedEvidence['confidence']) : 'low',
-    outcomes: arr(parsed.outcomes),
+    outcomes,
     annotations: clean(parsed.annotations),
     assessmentEvidence: clean(parsed.assessmentEvidence),
     differentiation: clean(parsed.differentiation),

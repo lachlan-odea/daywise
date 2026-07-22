@@ -18,9 +18,15 @@ import { useAuth } from '../context/AuthContext'
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition'
 import { aiAvailable } from '../lib/aiTimetable'
 import { generateEvidence, type Candidate, type GeneratedEvidence } from '../lib/aiRecord'
-import { getProgramList, getProgram } from '../lib/programs'
+import { getProgramList, getProgram, type Program } from '../lib/programs'
 import { subscribeTimetable, cellKey, currentWeek, type Timetable } from '../lib/timetable'
 import { saveEntry, EMPTY_EVIDENCE, type Evidence } from '../lib/entries'
+import {
+  subscribeClassPrograms,
+  setClassProgramsForClass,
+  classKey,
+  type ClassProgramMap,
+} from '../lib/classPrograms'
 
 const inputCls =
   'w-full rounded-xl border border-navy-200 bg-white px-4 py-2.5 text-navy-900 outline-none transition-colors placeholder:text-navy-300 focus:border-teal-400 focus:ring-4 focus:ring-teal-100'
@@ -129,6 +135,16 @@ export default function Record() {
   const candidatesRef = useRef<Candidate[] | null>(null)
   const voiceBaseRef = useRef('')
 
+  // class → program(s) linking
+  const [programsList, setProgramsList] = useState<Program[]>([])
+  const [classMap, setClassMap] = useState<ClassProgramMap>({})
+  const [chosenProgramIds, setChosenProgramIds] = useState<string[]>([])
+  const [pickerOpen, setPickerOpen] = useState(false)
+
+  const curKey = classKey(subject, className)
+  const hasClass = !!(subject.trim() || className.trim())
+  const mappedIds = classMap[curKey] ?? []
+
   const { supported, listening, transcript, interim, start, stop } = useSpeechRecognition()
 
   // Merge the recognised transcript onto the note captured when recording began.
@@ -152,6 +168,32 @@ export default function Record() {
     return subscribeTimetable(user.uid, setTt)
   }, [user])
 
+  useEffect(() => {
+    if (!user) return
+    getProgramList(user.uid).then(setProgramsList)
+    return subscribeClassPrograms(user.uid, setClassMap)
+  }, [user])
+
+  // Seed the chosen program(s) for the current class: use the saved mapping if any,
+  // otherwise suggest programs whose subject matches this class.
+  useEffect(() => {
+    if (mappedIds.length) {
+      setChosenProgramIds(mappedIds)
+    } else {
+      const subj = subject.trim().toLowerCase()
+      const suggested = programsList
+        .filter((p) => {
+          const s = (p.subject ?? '').toLowerCase()
+          return s && subj && (s.includes(subj) || subj.includes(s))
+        })
+        .map((p) => p.id!)
+        .filter(Boolean)
+      setChosenProgramIds(suggested)
+    }
+    setPickerOpen(false)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [curKey, classMap, programsList])
+
   const todaysClasses = useMemo(() => {
     const day = todayIndex()
     if (day < 0 || !tt) return []
@@ -165,6 +207,14 @@ export default function Record() {
     setSubject(c.subject)
     setClassName(c.className)
     setRoom(c.room ?? '')
+  }
+
+  const toggleProgram = (id: string) =>
+    setChosenProgramIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
+
+  const saveClassPrograms = async () => {
+    if (user && hasClass) await setClassProgramsForClass(user.uid, curKey, chosenProgramIds)
+    setPickerOpen(false)
   }
 
   const loadCandidates = async (): Promise<Candidate[]> => {
@@ -200,15 +250,27 @@ export default function Record() {
     setGenerating(true)
     try {
       const all = await loadCandidates()
-      const subj = subject.trim().toLowerCase()
-      const filtered =
-        subj && all.length
-          ? all.filter((c) => {
-              const s = (c.subject ?? '').toLowerCase()
-              return s && (s.includes(subj) || subj.includes(s))
-            })
-          : all
-      const candidates = filtered.length ? filtered : all
+      let candidates: Candidate[]
+      if (chosenProgramIds.length) {
+        // Scope matching to the program(s) this class follows.
+        candidates = all.filter((c) => chosenProgramIds.includes(c.programId))
+        // Remember the link for this class if it isn't saved yet / has changed.
+        if (user && hasClass) {
+          const changed = JSON.stringify([...chosenProgramIds].sort()) !== JSON.stringify([...mappedIds].sort())
+          if (changed) setClassProgramsForClass(user.uid, curKey, chosenProgramIds).catch(() => {})
+        }
+      } else {
+        // No program linked yet — fall back to a loose subject match.
+        const subj = subject.trim().toLowerCase()
+        const filtered =
+          subj && all.length
+            ? all.filter((c) => {
+                const s = (c.subject ?? '').toLowerCase()
+                return s && (s.includes(subj) || subj.includes(s))
+              })
+            : all
+        candidates = filtered.length ? filtered : all
+      }
       const result = await generateEvidence({
         note: note.trim(),
         klass: subject || className ? { subject, className } : undefined,
@@ -305,6 +367,79 @@ export default function Record() {
               <input type="date" className={inputCls} value={date} onChange={(e) => setDate(e.target.value)} />
             </label>
           </div>
+
+          {/* program(s) this class follows — scopes Curriculum Intelligence matching */}
+          {hasClass && programsList.length > 0 && (
+            <div className="rounded-2xl border border-navy-100 bg-cloud/40 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-navy-400">
+                  <BookOpen size={13} /> Program for {subject || className}
+                </p>
+                {!pickerOpen && (
+                  <button
+                    onClick={() => setPickerOpen(true)}
+                    className="text-xs font-semibold text-teal-600 hover:text-teal-700"
+                  >
+                    {chosenProgramIds.length ? 'Change' : 'Choose program'}
+                  </button>
+                )}
+              </div>
+
+              {!pickerOpen ? (
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  {chosenProgramIds.length ? (
+                    chosenProgramIds.map((id) => {
+                      const p = programsList.find((pp) => pp.id === id)
+                      return p ? (
+                        <span
+                          key={id}
+                          className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-navy-700 ring-1 ring-navy-100"
+                        >
+                          {p.name}
+                        </span>
+                      ) : null
+                    })
+                  ) : (
+                    <span className="text-sm text-navy-400">No program linked to this class yet.</span>
+                  )}
+                  {!mappedIds.length && chosenProgramIds.length > 0 && (
+                    <span className="text-xs text-navy-400">(suggested — confirm below)</span>
+                  )}
+                </div>
+              ) : (
+                <div className="mt-3 space-y-2">
+                  <p className="text-xs text-navy-500">
+                    Which program(s) does this class follow? Curriculum Intelligence will match your lesson within these.
+                  </p>
+                  <div className="space-y-1.5">
+                    {programsList.map((p) => (
+                      <label key={p.id} className="flex items-center gap-2.5 rounded-lg bg-white px-3 py-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={chosenProgramIds.includes(p.id!)}
+                          onChange={() => toggleProgram(p.id!)}
+                          className="h-4 w-4 accent-teal-500"
+                        />
+                        <span className="font-semibold text-navy-800">{p.name}</span>
+                        <span className="text-xs text-navy-400">
+                          {p.subject}
+                          {p.stage ? ` · ${p.stage}` : ''}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                  <div className="flex justify-end gap-2 pt-1">
+                    <button onClick={() => setPickerOpen(false)} className="btn-ghost text-xs">
+                      Cancel
+                    </button>
+                    <button onClick={saveClassPrograms} className="btn-primary text-xs">
+                      Save
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* note */}
           <div>

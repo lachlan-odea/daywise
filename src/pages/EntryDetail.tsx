@@ -21,7 +21,13 @@ function formatDate(iso: string) {
 const isTeachingPeriod = (label: string) => /^(period\s*|p\s*|lesson\s*)?\d+$/i.test((label || '').trim())
 const sameClass = (e: LessonEntry, cell: { subject?: string; className?: string }) => {
   const s = (x?: string) => (x ?? '').trim().toLowerCase()
-  return (!!s(e.subject) && s(e.subject) === s(cell.subject)) || (!!s(e.className) && s(e.className) === s(cell.className))
+  const eSub = s(e.subject)
+  const eCls = s(e.className)
+  const cSub = s(cell.subject)
+  const cCls = s(cell.className)
+  // When both name a class, the class must match (so same-subject classes don't collide).
+  if (eCls && cCls) return eCls === cCls && (!eSub || !cSub || eSub === cSub)
+  return (!!eSub && eSub === cSub) || (!!eCls && eCls === cCls)
 }
 
 function Section({ label, text }: { label: string; text: string }) {
