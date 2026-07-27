@@ -16,6 +16,7 @@ import {
   Mic,
   RefreshCw,
   BarChart3,
+  ShieldCheck,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useConfirm } from '../components/ConfirmProvider'
@@ -134,7 +135,7 @@ export default function Admin() {
   return (
     <main className="mx-auto max-w-3xl px-5 py-8 sm:px-8">
       <p className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-teal-600">
-        <Megaphone size={15} /> Admin
+        <ShieldCheck size={15} /> Admin
       </p>
       <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-navy-900 sm:text-3xl">
         {tab === 'notify' ? 'Send a notification' : 'App usage'}
