@@ -14,6 +14,7 @@ import {
   Download,
   Crown,
   Megaphone,
+  type LucideIcon,
 } from 'lucide-react'
 import { LogoMark, Wordmark } from './Logo'
 import GlobalSearch from './GlobalSearch'
@@ -26,13 +27,14 @@ import { usePwaInstall } from '../hooks/usePwaInstall'
 import { PLAN_LABELS, type Plan } from '../lib/profile'
 import { isAdmin } from '../lib/admin'
 
-const nav = [
+type NavItem = { to: string; label: string; icon: LucideIcon; end?: boolean; soon?: boolean }
+const nav: NavItem[] = [
   { to: '/app', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/app/history', label: 'Diary', icon: History },
   { to: '/app/record', label: 'Record Lesson', icon: Mic },
   { to: '/app/timetable', label: 'Timetable', icon: CalendarClock },
   { to: '/app/programs', label: 'Programs', icon: BookOpen },
-  { to: '/app/reports', label: 'Data & Reports', icon: BarChart3, soon: true },
+  { to: '/app/reports', label: 'Data & Reports', icon: BarChart3 },
 ]
 
 function initialsOf(name: string) {

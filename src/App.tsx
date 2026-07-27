@@ -15,6 +15,7 @@ import History from './pages/History'
 import EntryDetail from './pages/EntryDetail'
 import Settings from './pages/Settings'
 import Admin from './pages/Admin'
+import Reports from './pages/Reports'
 
 export default function App() {
   return (
@@ -41,6 +42,7 @@ export default function App() {
             <Route path="history" element={<History />} />
             <Route path="history/:id" element={<EntryDetail />} />
             <Route path="settings" element={<Settings />} />
+            <Route path="reports" element={<Reports />} />
             <Route path="admin" element={<Admin />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />

@@ -147,7 +147,19 @@ the model.
 - Installable PWA scoped to the app (`/app`) — launches into the dashboard, with app icons and an
   offline service worker.
 
-### 12. Dashboard
+### 12. Data & Reports (Teaching Overview)
+- **Teaching Overview** dashboard with a **This Term / Year to Date** toggle.
+- **KPI cards:** lessons taught, days remaining in term, evidence entries, programs active, lessons
+  this week, outcomes covered, classes taught, last recorded.
+- **Program Snapshot** table: per-program progress (bar + %), lessons taught / total, last lesson,
+  next lesson (or "Complete"); rows link to the program.
+- **Teaching Timeline:** bar chart of lessons recorded per week across the current term.
+- **Upcoming Focus:** flags programs needing attention (no recent lesson, nearing completion,
+  complete).
+- **Quick Reports:** Evidence Register (CSV), Program Report (CSV), and Term Summary (print).
+- All figures derive from recorded diary entries, programs and the term calendar.
+
+### 13. Dashboard
 - Time-of-day greeting; term/week (or "Holidays") pill linking to the timetable.
 - Today's timetable (live A/B week) showing **all periods** including breaks/free periods;
   the current period is highlighted "Now".
@@ -161,8 +173,6 @@ the model.
 ---
 
 ## Planned / not yet built
-- **Data & Reports** — instant reports by subject, class, student, outcome, assessment evidence,
-  and date range (nav item shows "Soon").
 - Student-level records and reporting.
 - Billing/subscription management (plans are display-only today).
 - AI backend option for the toughest PDF/Word extractions (currently client-side Gemini + heuristics).
@@ -172,6 +182,11 @@ the model.
 ## Changelog (closed beta, pre-v0.1)
 
 _Newest first. Each entry corresponds to work pushed to `main`._
+
+### 2026-07-27
+- Shipped the **Data & Reports** section — Teaching Overview (KPI cards, program snapshot, weekly
+  timeline, upcoming focus) with This Term / Year-to-Date toggle and CSV/print quick reports.
+  Enabled the nav item (removed "Soon").
 
 ### 2026-07-22
 - Diary entries are now **editable** after saving (note, class details, outcomes, evidence).
