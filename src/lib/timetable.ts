@@ -60,6 +60,8 @@ export interface Timetable {
   anchorMondayISO?: string
   /** Which week (A/B) that reference calendar week is. */
   anchorWeek?: WeekId
+  /** Which week each term begins on when term dates are set. Defaults to 'A'. */
+  termStartWeek?: WeekId
 }
 
 export const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
@@ -145,7 +147,9 @@ export function currentWeek(tt: Timetable | null, now: Date = new Date()): WeekI
     const [ty, tm, td] = tt.terms[idx].start.split('-').map(Number)
     const termStart = mondayOf(new Date(ty, (tm || 1) - 1, td || 1))
     const w = Math.round((mondayOf(now).getTime() - termStart.getTime()) / (7 * 86_400_000))
-    return (((w % 2) + 2) % 2) === 0 ? 'A' : 'B'
+    // Terms start on Week A by default; a school can set them to start on Week B.
+    const offset = tt.termStartWeek === 'B' ? 1 : 0
+    return (((w + offset) % 2) + 2) % 2 === 0 ? 'A' : 'B'
   }
   // Fallback to the manual anchor (e.g. no term calendar, or during holidays).
   if (!tt.anchorMondayISO || !tt.anchorWeek) return 'A'

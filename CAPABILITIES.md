@@ -67,7 +67,8 @@ the model.
 - **Fortnightly (Week A / Week B)** support with per-week editing.
 - **Per-day bell-time exceptions** (a day can run different times to the period default).
 - **Term calendar** — start/end dates for all four terms; the app derives the current term,
-  teaching week, and holiday periods. Each term starts on Week A.
+  teaching week, and holiday periods. Terms start on Week A by default, but a **"This week is:
+  Week A / Week B"** control lets a school whose weeks don't reset each term flip the phase.
 - Drag-and-drop to move/swap classes while editing.
 - **Import from PDF / Word / Excel**:
   - AI extraction (Gemini) is primary; a client-side heuristic parser + manual column mapping
@@ -196,6 +197,11 @@ the model.
 ## Changelog (closed beta, pre-v0.1)
 
 _Newest first. Each entry corresponds to work pushed to `main`._
+
+### 2026-07-28
+- Timetable: added a **"This week is: Week A / Week B"** control (shown when term dates are set) so
+  schools whose A/B doesn't reset each term can correct the phase — previously the week was locked
+  to "each term starts on Week A" (`termStartWeek` field).
 
 ### 2026-07-27
 - Admin **View as user** — read-only whole-app impersonation for diagnosing beta issues (effective

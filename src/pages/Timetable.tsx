@@ -138,6 +138,13 @@ export default function Timetable() {
       d.anchorWeek = week
     })
 
+  // Set which week each term starts on so that *this* week reads as the chosen week.
+  const markStartWeek = (week: WeekId) =>
+    mutate((d) => {
+      const asA = currentWeek({ ...d, termStartWeek: 'A' }, new Date())
+      d.termStartWeek = asA === week ? 'A' : 'B'
+    })
+
   const updatePeriod = (id: string, patch: Partial<{ label: string; start: string; end: string }>) =>
     mutate((d) => {
       const p = d.periods.find((x) => x.id === id)
@@ -329,7 +336,22 @@ export default function Timetable() {
           </div>
         )}
         {editing && tt.fortnightly && (tt.terms ?? []).some((t) => t?.start && t?.end) && (
-          <span className="text-xs text-navy-400">Week A/B follows your term dates (each term starts on Week A).</span>
+          <div className="flex flex-wrap items-center gap-2 text-sm text-navy-500">
+            <span>This week is:</span>
+            {WEEKS.map((w) => (
+              <button
+                key={w}
+                onClick={() => markStartWeek(w)}
+                className={`rounded-lg border px-2.5 py-1 text-xs font-bold transition-colors ${
+                  currentWeek(tt) === w
+                    ? 'border-teal-300 bg-teal-50 text-teal-700'
+                    : 'border-navy-200 text-navy-600 hover:bg-navy-50'
+                }`}
+              >
+                Week {w}
+              </button>
+            ))}
+          </div>
         )}
       </div>
 
