@@ -142,6 +142,10 @@ the model.
   - **App usage** — total users, how many have a program / a timetable, total lessons recorded,
     plus a per-user table (plan, school/state, joined, last active, program ✓, timetable ✓, lesson
     count). Uses server-side aggregate counts; admins have read access to all `/users/**`.
+  - **View as user (read-only)** — a "View as" action per user opens the whole app reading that
+    user's data (Dashboard, Timetable, Programs, Diary, Reports, Achievements) with a persistent
+    "Viewing as … — read only" banner and an Exit button. Writes are blocked (Firestore rules +
+    Settings gating); no backend/impersonation tokens involved. For beta diagnosis.
 
 ### 11. Progressive Web App
 - Installable PWA scoped to the app (`/app`) — launches into the dashboard, with app icons and an
@@ -194,6 +198,8 @@ the model.
 _Newest first. Each entry corresponds to work pushed to `main`._
 
 ### 2026-07-27
+- Admin **View as user** — read-only whole-app impersonation for diagnosing beta issues (effective
+  uid routes all data reads; persistent banner; writes blocked by rules + Settings gating).
 - Added an **Achievements** page (profile menu) — auto-awarded badges across consistency,
   milestones, programs, evidence, features/feedback and special categories, to gamify usage.
 - Shipped the **Data & Reports** section — Teaching Overview (KPI cards, program snapshot, weekly

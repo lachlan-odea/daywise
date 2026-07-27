@@ -15,6 +15,7 @@ import {
   Crown,
   Megaphone,
   Trophy,
+  Eye,
   type LucideIcon,
 } from 'lucide-react'
 import { LogoMark, Wordmark } from './Logo'
@@ -49,7 +50,7 @@ function initialsOf(name: string) {
 }
 
 export default function AppShell() {
-  const { user, logout } = useAuth()
+  const { user, logout, effectiveUid, impersonating, stopImpersonation } = useAuth()
   const { profile } = useProfile()
   const { canInstall, install } = usePwaInstall()
   const navigate = useNavigate()
@@ -257,7 +258,23 @@ export default function AppShell() {
           </div>
         </header>
 
-        <Outlet />
+        {impersonating && (
+          <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 bg-amber-500 px-4 py-2 text-center text-sm font-semibold text-white">
+            <span className="flex items-center gap-1.5">
+              <Eye size={15} /> Viewing as <b>{impersonating.name}</b> — read only
+            </span>
+            <button
+              onClick={stopImpersonation}
+              className="rounded-full bg-white/20 px-3 py-0.5 text-xs font-bold hover:bg-white/30"
+            >
+              Exit
+            </button>
+          </div>
+        )}
+
+        <div key={effectiveUid ?? 'none'}>
+          <Outlet />
+        </div>
       </div>
     </div>
   )

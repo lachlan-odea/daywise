@@ -17,10 +17,20 @@ import {
 } from 'firebase/auth'
 import { doc, deleteDoc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore'
 import { auth, db, googleProvider, microsoftProvider } from '../lib/firebase'
+import { isAdmin } from '../lib/admin'
+
+const IMPERSONATE_KEY = 'daywise:impersonate'
 
 interface AuthContextValue {
   user: User | null
   loading: boolean
+  /** The uid whose data the app should read — the impersonated user for admins, else the signed-in
+   *  user. Empty string only when signed out (never reached inside the protected app). */
+  effectiveUid: string
+  /** Set while an admin is viewing the app as another user (read-only). */
+  impersonating: { uid: string; name: string } | null
+  startImpersonation: (uid: string, name: string) => void
+  stopImpersonation: () => void
   signUpWithEmail: (name: string, email: string, password: string) => Promise<void>
   signInWithEmail: (email: string, password: string) => Promise<void>
   signInWithGoogle: () => Promise<void>
@@ -64,6 +74,14 @@ async function upsertUserProfile(user: User) {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
+  const [impersonate, setImpersonate] = useState<{ uid: string; name: string } | null>(() => {
+    try {
+      const raw = sessionStorage.getItem(IMPERSONATE_KEY)
+      return raw ? JSON.parse(raw) : null
+    } catch {
+      return null
+    }
+  })
   // Bumped to force a re-render when the User object mutates in place
   // (e.g. after updateProfile), since its reference stays the same.
   const [, setTick] = useState(0)
@@ -138,9 +156,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await upsertUserProfile(cred.user)
   }
 
+  // Only admins may impersonate; ignore any stale flag for non-admins.
+  const canImpersonate = isAdmin(user)
+  const impersonating = canImpersonate ? impersonate : null
+  const effectiveUid = impersonating?.uid ?? user?.uid ?? ''
+
+  const startImpersonation = (uid: string, name: string) => {
+    if (!isAdmin(user)) return
+    const v = { uid, name }
+    setImpersonate(v)
+    try {
+      sessionStorage.setItem(IMPERSONATE_KEY, JSON.stringify(v))
+    } catch {
+      /* ignore */
+    }
+  }
+  const stopImpersonation = () => {
+    setImpersonate(null)
+    try {
+      sessionStorage.removeItem(IMPERSONATE_KEY)
+    } catch {
+      /* ignore */
+    }
+  }
+
   const value: AuthContextValue = {
     user,
     loading,
+    effectiveUid,
+    impersonating,
+    startImpersonation,
+    stopImpersonation,
     signUpWithEmail,
     signInWithEmail,
     signInWithGoogle: () => signInWithProvider(googleProvider),

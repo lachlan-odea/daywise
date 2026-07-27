@@ -160,7 +160,7 @@ function SectionEditor({
 
 export default function ProgramDetail() {
   const { id } = useParams<{ id: string }>()
-  const { user } = useAuth()
+  const { user, effectiveUid } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const confirm = useConfirm()
@@ -183,7 +183,7 @@ export default function ProgramDetail() {
   useEffect(() => {
     if (!user || !id) return
     let active = true
-    getProgram(user.uid, id)
+    getProgram(effectiveUid, id)
       .then((res) => {
         if (!active) return
         if (!res) setState('missing')
@@ -264,7 +264,7 @@ export default function ProgramDetail() {
         structure: meta.structure,
         term: meta.term,
       }
-      await updateProgram(user.uid, id, trimmedMeta, cleaned)
+      await updateProgram(effectiveUid, id, trimmedMeta, cleaned)
       setData({ program: { ...(data as { program: Program }).program, ...trimmedMeta, lessonCount: cleaned.length }, lessons: cleaned })
       setEditing(false)
     } finally {
@@ -280,7 +280,7 @@ export default function ProgramDetail() {
       confirmLabel: 'Delete program',
     })
     if (!ok) return
-    await deleteProgram(user.uid, id)
+    await deleteProgram(effectiveUid, id)
     navigate('/app/programs')
   }
 

@@ -37,7 +37,7 @@ function todayIndex() {
 }
 
 export default function Timetable() {
-  const { user } = useAuth()
+  const { user, effectiveUid } = useAuth()
   const [tt, setTt] = useState<Timetable | null>(null)
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(false)
@@ -64,7 +64,7 @@ export default function Timetable() {
 
   useEffect(() => {
     if (!user) return
-    const unsub = subscribeTimetable(user.uid, (remote) => {
+    const unsub = subscribeTimetable(effectiveUid, (remote) => {
       setLoading(false)
       if (!dirtyRef.current) {
         const next = remote ?? defaultTimetable()
@@ -167,7 +167,7 @@ export default function Timetable() {
     setSaving(true)
     setMsg('')
     try {
-      await saveTimetable(user.uid, tt)
+      await saveTimetable(effectiveUid, tt)
       baselineRef.current = clone(tt)
       setDirty(false)
       setEditing(false)
@@ -205,7 +205,7 @@ export default function Timetable() {
     if (!user) return
     setSavingTerms(true)
     try {
-      await updateTerms(user.uid, termsDraft)
+      await updateTerms(effectiveUid, termsDraft)
       setShowTerms(false)
     } finally {
       setSavingTerms(false)

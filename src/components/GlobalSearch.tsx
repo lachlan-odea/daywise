@@ -30,7 +30,7 @@ function formatDate(iso: string) {
 }
 
 export default function GlobalSearch() {
-  const { user } = useAuth()
+  const { user, effectiveUid } = useAuth()
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -51,6 +51,11 @@ export default function GlobalSearch() {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
+  // Rebuild the corpus when the (effective) user changes — e.g. admin view-as.
+  useEffect(() => {
+    setCorpus(null)
+  }, [effectiveUid])
+
   // Build the search corpus once, when first opened
   useEffect(() => {
     if (!open || corpus || !user) return
@@ -60,11 +65,11 @@ export default function GlobalSearch() {
       try {
         const items: Item[] = []
         const [list, tt, entries] = await Promise.all([
-          getProgramList(user.uid),
-          getTimetableOnce(user.uid),
-          getEntriesOnce(user.uid),
+          getProgramList(effectiveUid),
+          getTimetableOnce(effectiveUid),
+          getEntriesOnce(effectiveUid),
         ])
-        const fulls = await Promise.all(list.map((p) => (p.id ? getProgram(user.uid, p.id) : null)))
+        const fulls = await Promise.all(list.map((p) => (p.id ? getProgram(effectiveUid, p.id) : null)))
         for (const res of fulls) {
           if (!res) continue
           const { program, lessons } = res

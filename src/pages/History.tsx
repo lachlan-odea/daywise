@@ -107,7 +107,7 @@ const sameClass = (e: LessonEntry, cell: { subject: string; className: string })
 }
 
 export default function History() {
-  const { user } = useAuth()
+  const { user, effectiveUid } = useAuth()
   const confirm = useConfirm()
   const [entries, setEntries] = useState<LessonEntry[] | null>(null)
   const [tt, setTt] = useState<Timetable | null>(null)
@@ -124,19 +124,19 @@ export default function History() {
 
   useEffect(() => {
     if (!user) return
-    return subscribeEntries(user.uid, setEntries)
+    return subscribeEntries(effectiveUid, setEntries)
   }, [user])
 
   useEffect(() => {
     if (!user) return
-    return subscribeTimetable(user.uid, setTt)
+    return subscribeTimetable(effectiveUid, setTt)
   }, [user])
 
   // Planning notes for the selected day (shared with the dashboard's notes).
   useEffect(() => {
     if (!user) return
     setEditingNote(null)
-    return subscribePlanningDay(user.uid, selected, setPlanning)
+    return subscribePlanningDay(effectiveUid, selected, setPlanning)
   }, [user, selected])
 
   const startEditNote = (periodId: string) => {
@@ -151,7 +151,7 @@ export default function History() {
     if (!user) return
     setSavingNote(true)
     try {
-      await savePlanningNote(user.uid, selected, periodId, draft)
+      await savePlanningNote(effectiveUid, selected, periodId, draft)
       setEditingNote(null)
       setDraft('')
     } finally {
@@ -245,7 +245,7 @@ export default function History() {
     if (!ok) return
     setDeletingId(e.id)
     try {
-      await deleteEntry(user.uid, e.id)
+      await deleteEntry(effectiveUid, e.id)
     } finally {
       setDeletingId(null)
     }

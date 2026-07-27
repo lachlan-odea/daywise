@@ -111,7 +111,7 @@ function EvidenceField({
 }
 
 export default function Record() {
-  const { user } = useAuth()
+  const { user, effectiveUid } = useAuth()
   const navigate = useNavigate()
   const [params] = useSearchParams()
 
@@ -165,13 +165,13 @@ export default function Record() {
 
   useEffect(() => {
     if (!user) return
-    return subscribeTimetable(user.uid, setTt)
+    return subscribeTimetable(effectiveUid, setTt)
   }, [user])
 
   useEffect(() => {
     if (!user) return
-    getProgramList(user.uid).then(setProgramsList)
-    return subscribeClassPrograms(user.uid, setClassMap)
+    getProgramList(effectiveUid).then(setProgramsList)
+    return subscribeClassPrograms(effectiveUid, setClassMap)
   }, [user])
 
   // Seed the chosen program(s) for the current class: use the saved mapping if any,
@@ -213,15 +213,15 @@ export default function Record() {
     setChosenProgramIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
 
   const saveClassPrograms = async () => {
-    if (user && hasClass) await setClassProgramsForClass(user.uid, curKey, chosenProgramIds)
+    if (user && hasClass) await setClassProgramsForClass(effectiveUid, curKey, chosenProgramIds)
     setPickerOpen(false)
   }
 
   const loadCandidates = async (): Promise<Candidate[]> => {
     if (candidatesRef.current) return candidatesRef.current
     if (!user) return []
-    const list = await getProgramList(user.uid)
-    const fulls = await Promise.all(list.map((p) => (p.id ? getProgram(user.uid, p.id) : null)))
+    const list = await getProgramList(effectiveUid)
+    const fulls = await Promise.all(list.map((p) => (p.id ? getProgram(effectiveUid, p.id) : null)))
     const cands: Candidate[] = []
     for (const res of fulls) {
       if (!res) continue
@@ -257,7 +257,7 @@ export default function Record() {
         // Remember the link for this class if it isn't saved yet / has changed.
         if (user && hasClass) {
           const changed = JSON.stringify([...chosenProgramIds].sort()) !== JSON.stringify([...mappedIds].sort())
-          if (changed) setClassProgramsForClass(user.uid, curKey, chosenProgramIds).catch(() => {})
+          if (changed) setClassProgramsForClass(effectiveUid, curKey, chosenProgramIds).catch(() => {})
         }
       } else {
         // No program linked yet — fall back to a loose subject match.
@@ -298,7 +298,7 @@ export default function Record() {
     setSaving(true)
     setError('')
     try {
-      const id = await saveEntry(user.uid, {
+      const id = await saveEntry(effectiveUid, {
         date,
         note: note.trim(),
         subject: subject.trim(),

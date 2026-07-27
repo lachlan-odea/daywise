@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Navigate } from 'react-router-dom'
+import { Navigate, useNavigate } from 'react-router-dom'
 import {
   Megaphone,
   Send,
@@ -54,8 +54,14 @@ const inputCls =
   'w-full rounded-xl border border-navy-200 bg-white px-4 py-2.5 text-navy-900 outline-none transition-colors placeholder:text-navy-300 focus:border-teal-400 focus:ring-4 focus:ring-teal-100'
 
 export default function Admin() {
-  const { user } = useAuth()
+  const { user, startImpersonation } = useAuth()
   const confirm = useConfirm()
+  const navigate = useNavigate()
+
+  const viewAs = (u: { uid: string; displayName: string | null; email: string | null }) => {
+    startImpersonation(u.uid, u.displayName || u.email || 'user')
+    navigate('/app')
+  }
   const [items, setItems] = useState<Announcement[]>([])
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
@@ -323,12 +329,13 @@ export default function Admin() {
                       <th className="text-center">Program</th>
                       <th className="text-center">Timetable</th>
                       <th className="text-right">Lessons</th>
+                      <th className="text-right"></th>
                     </tr>
                   </thead>
                   <tbody>
                     {usage.users.length === 0 ? (
                       <tr>
-                        <td colSpan={8} className="text-center text-navy-400">
+                        <td colSpan={9} className="text-center text-navy-400">
                           No users yet.
                         </td>
                       </tr>
@@ -382,6 +389,14 @@ export default function Admin() {
                             )}
                           </td>
                           <td className="text-right font-bold text-navy-900">{u.lessonCount}</td>
+                          <td className="text-right">
+                            <button
+                              onClick={() => viewAs(u)}
+                              className="whitespace-nowrap rounded-full border border-navy-200 px-3 py-1.5 text-xs font-semibold text-navy-600 hover:bg-navy-50"
+                            >
+                              View as
+                            </button>
+                          </td>
                         </tr>
                       ))
                     )}

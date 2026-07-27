@@ -24,7 +24,7 @@ function groupValue(p: Program, by: GroupBy): string {
 }
 
 export default function Programs() {
-  const { user } = useAuth()
+  const { user, effectiveUid } = useAuth()
   const navigate = useNavigate()
   const { maxPrograms, paid } = useEntitlements()
   const confirm = useConfirm()
@@ -55,7 +55,7 @@ export default function Programs() {
 
   useEffect(() => {
     if (!user) return
-    return subscribePrograms(user.uid, setPrograms)
+    return subscribePrograms(effectiveUid, setPrograms)
   }, [user])
 
   const remove = async (p: Program) => {
@@ -68,7 +68,7 @@ export default function Programs() {
     if (!ok) return
     setDeletingId(p.id)
     try {
-      await deleteProgram(user.uid, p.id)
+      await deleteProgram(effectiveUid, p.id)
     } finally {
       setDeletingId(null)
     }

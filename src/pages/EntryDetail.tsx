@@ -100,7 +100,7 @@ function Section({ label, text }: { label: string; text: string }) {
 
 export default function EntryDetail() {
   const { id } = useParams<{ id: string }>()
-  const { user } = useAuth()
+  const { user, effectiveUid } = useAuth()
   const navigate = useNavigate()
   const confirm = useConfirm()
   const [entry, setEntry] = useState<LessonEntry | null>(null)
@@ -114,7 +114,7 @@ export default function EntryDetail() {
   useEffect(() => {
     if (!user || !id) return
     let active = true
-    getEntry(user.uid, id)
+    getEntry(effectiveUid, id)
       .then((e) => {
         if (!active) return
         if (!e) setState('missing')
@@ -131,12 +131,12 @@ export default function EntryDetail() {
 
   useEffect(() => {
     if (!user) return
-    return subscribeTimetable(user.uid, setTt)
+    return subscribeTimetable(effectiveUid, setTt)
   }, [user])
 
   useEffect(() => {
     if (!user || !entry?.date) return
-    return subscribePlanningDay(user.uid, entry.date, setPlanning)
+    return subscribePlanningDay(effectiveUid, entry.date, setPlanning)
   }, [user, entry?.date])
 
   // Match this entry to its timetabled period on that date to surface its planning note.
@@ -201,7 +201,7 @@ export default function EntryDetail() {
           nextSteps: draft.evidence.nextSteps.map((s) => s.trim()).filter(Boolean),
         },
       }
-      await updateEntry(user.uid, id, patch)
+      await updateEntry(effectiveUid, id, patch)
       setEntry({ ...entry, ...patch })
       setEditing(false)
       setDraft(null)
@@ -218,7 +218,7 @@ export default function EntryDetail() {
       confirmLabel: 'Delete entry',
     })
     if (!ok) return
-    await deleteEntry(user.uid, id)
+    await deleteEntry(effectiveUid, id)
     navigate('/app/history')
   }
 

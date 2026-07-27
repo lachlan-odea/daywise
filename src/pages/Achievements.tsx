@@ -79,7 +79,7 @@ function BadgeMedal({ badge, stats }: { badge: Badge; stats: Stats }) {
 }
 
 export default function Achievements() {
-  const { user } = useAuth()
+  const { user, effectiveUid } = useAuth()
   const { profile } = useProfile()
   const [entries, setEntries] = useState<LessonEntry[] | null>(null)
   const [programs, setPrograms] = useState<LoadedProgram[] | null>(null)
@@ -89,24 +89,24 @@ export default function Achievements() {
 
   useEffect(() => {
     if (!user) return
-    return subscribeTimetable(user.uid, setTt)
+    return subscribeTimetable(effectiveUid, setTt)
   }, [user])
 
   useEffect(() => {
     if (!user) return
-    return subscribeAchievementEvents(user.uid, setEvents)
+    return subscribeAchievementEvents(effectiveUid, setEvents)
   }, [user])
 
   useEffect(() => {
     if (!user) return
     let active = true
     ;(async () => {
-      const [ents, list] = await Promise.all([getEntriesOnce(user.uid), getProgramList(user.uid)])
-      const fulls = await Promise.all(list.map((p) => (p.id ? getProgram(user.uid, p.id) : null)))
+      const [ents, list] = await Promise.all([getEntriesOnce(effectiveUid), getProgramList(effectiveUid)])
+      const fulls = await Promise.all(list.map((p) => (p.id ? getProgram(effectiveUid, p.id) : null)))
       let fbCount = 0
       if (db) {
         try {
-          fbCount = (await getCountFromServer(collection(db, 'users', user.uid, 'feedback'))).data().count
+          fbCount = (await getCountFromServer(collection(db, 'users', effectiveUid, 'feedback'))).data().count
         } catch {
           fbCount = 0
         }

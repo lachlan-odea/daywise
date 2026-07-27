@@ -125,7 +125,8 @@ function Banner({ type, children }: { type: 'success' | 'error'; children: React
 /* ---------- page ---------- */
 
 export default function Settings() {
-  const { user, providerId, updateDisplayName, changePassword, deleteAccount } = useAuth()
+  const { user, providerId, updateDisplayName, changePassword, deleteAccount, impersonating } = useAuth()
+  const readOnly = !!impersonating
   const { profile, loading: profileLoading } = useProfile()
   const navigate = useNavigate()
 
@@ -161,7 +162,7 @@ export default function Settings() {
   }, [profile, profileLoading, user])
 
   const toggleReminders = async () => {
-    if (!user) return
+    if (!user || readOnly) return
     const next = !emailReminders
     setEmailReminders(next)
     setSavingComms(true)
@@ -176,7 +177,7 @@ export default function Settings() {
 
   const saveProfile = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!user) return
+    if (!user || readOnly) return
     setProfileMsg(null)
     setSavingProfile(true)
     try {
@@ -199,6 +200,7 @@ export default function Settings() {
 
   const savePassword = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (readOnly) return
     setPwMsg(null)
     if (newPw.length < 6) return setPwMsg({ type: 'error', text: 'New password must be at least 6 characters.' })
     if (newPw !== confirmPw) return setPwMsg({ type: 'error', text: 'New passwords don’t match.' })
@@ -223,6 +225,7 @@ export default function Settings() {
   const [delErr, setDelErr] = useState('')
 
   const confirmDelete = async () => {
+    if (readOnly) return
     setDelErr('')
     setDelBusy(true)
     try {
@@ -247,6 +250,12 @@ export default function Settings() {
       {!firebaseConfigured && (
         <div className="mb-6">
           <Banner type="error">Firebase isn’t configured, so changes can’t be saved right now.</Banner>
+        </div>
+      )}
+
+      {readOnly && (
+        <div className="mb-6 rounded-xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+          You’re viewing another user’s account (read-only). Settings can’t be changed here.
         </div>
       )}
 

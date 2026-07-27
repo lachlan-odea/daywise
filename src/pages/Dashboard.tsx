@@ -28,7 +28,7 @@ const classKey = (subject?: string, className?: string) =>
   `${(subject || '').trim().toLowerCase()}|${(className || '').trim().toLowerCase()}`
 
 export default function Dashboard() {
-  const { user } = useAuth()
+  const { user, effectiveUid } = useAuth()
   const { profile } = useProfile()
   const [tt, setTt] = useState<Timetable | null>(null)
   const [programs, setPrograms] = useState<Program[] | null>(null)
@@ -57,17 +57,17 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!user) return
-    return subscribeTimetable(user.uid, setTt)
+    return subscribeTimetable(effectiveUid, setTt)
   }, [user])
 
   useEffect(() => {
     if (!user) return
-    return subscribePrograms(user.uid, setPrograms)
+    return subscribePrograms(effectiveUid, setPrograms)
   }, [user])
 
   useEffect(() => {
     if (!user) return
-    return subscribeEntries(user.uid, setEntries)
+    return subscribeEntries(effectiveUid, setEntries)
   }, [user])
 
   // Today's classes drawn from the saved timetable, for the current (A/B) week.
@@ -92,7 +92,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!user) return
-    return subscribePlanningDay(user.uid, todayISOStr, setPlanning)
+    return subscribePlanningDay(effectiveUid, todayISOStr, setPlanning)
   }, [user, todayISOStr])
 
   const startEditNote = (periodId: string) => {
@@ -107,7 +107,7 @@ export default function Dashboard() {
     if (!user) return
     setSavingNote(true)
     try {
-      await savePlanningNote(user.uid, todayISOStr, periodId, draft)
+      await savePlanningNote(effectiveUid, todayISOStr, periodId, draft)
       setEditingNote(null)
       setDraft('')
     } finally {

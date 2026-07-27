@@ -52,7 +52,7 @@ const PROGRESS_COLOR = (p: number, complete: boolean) =>
   complete ? 'bg-emerald-500' : p >= 66 ? 'bg-teal-500' : p >= 40 ? 'bg-amber-500' : 'bg-rose-500'
 
 export default function Reports() {
-  const { user } = useAuth()
+  const { user, effectiveUid } = useAuth()
   const [entries, setEntries] = useState<LessonEntry[] | null>(null)
   const [programs, setPrograms] = useState<LoadedProgram[] | null>(null)
   const [tt, setTt] = useState<Timetable | null>(null)
@@ -61,20 +61,20 @@ export default function Reports() {
 
   useEffect(() => {
     if (!user) return
-    return subscribeTimetable(user.uid, setTt)
+    return subscribeTimetable(effectiveUid, setTt)
   }, [user])
 
   // Visiting this page unlocks the "Data Explorer" achievement.
   useEffect(() => {
-    if (user) markAchievementEvent(user.uid, 'reportsVisited').catch(() => {})
+    if (user) markAchievementEvent(effectiveUid, 'reportsVisited').catch(() => {})
   }, [user])
 
   useEffect(() => {
     if (!user) return
     let active = true
     ;(async () => {
-      const [ents, list] = await Promise.all([getEntriesOnce(user.uid), getProgramList(user.uid)])
-      const fulls = await Promise.all(list.map((p) => (p.id ? getProgram(user.uid, p.id) : null)))
+      const [ents, list] = await Promise.all([getEntriesOnce(effectiveUid), getProgramList(effectiveUid)])
+      const fulls = await Promise.all(list.map((p) => (p.id ? getProgram(effectiveUid, p.id) : null)))
       if (!active) return
       setEntries(ents)
       setPrograms(fulls.filter(Boolean) as LoadedProgram[])
@@ -127,16 +127,16 @@ export default function Reports() {
     const rows = (entries ?? []).filter((e) => e.date >= startISO && e.date <= endISO)
     downloadCsv(`daywise-evidence-register-${period}.csv`, evidenceRegisterCsv(rows))
     if (user) {
-      markAchievementEvent(user.uid, 'evidenceRegister').catch(() => {})
-      markAchievementEvent(user.uid, 'reportGenerated').catch(() => {})
+      markAchievementEvent(effectiveUid, 'evidenceRegister').catch(() => {})
+      markAchievementEvent(effectiveUid, 'reportGenerated').catch(() => {})
     }
   }
   const runProgramReport = () => {
     downloadCsv(`daywise-program-report-${period}.csv`, programReportCsv(ov.programs))
-    if (user) markAchievementEvent(user.uid, 'reportGenerated').catch(() => {})
+    if (user) markAchievementEvent(effectiveUid, 'reportGenerated').catch(() => {})
   }
   const runTermSummary = () => {
-    if (user) markAchievementEvent(user.uid, 'reportGenerated').catch(() => {})
+    if (user) markAchievementEvent(effectiveUid, 'reportGenerated').catch(() => {})
     window.print()
   }
 

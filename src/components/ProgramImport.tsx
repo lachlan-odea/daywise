@@ -15,7 +15,7 @@ export default function ProgramImport({
   onClose: () => void
   onSaved: (id: string) => void
 }) {
-  const { user } = useAuth()
+  const { user, effectiveUid } = useAuth()
   const [step, setStep] = useState<'upload' | 'review'>('upload')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -58,7 +58,7 @@ export default function ProgramImport({
     setError('')
     try {
       const id = await saveProgram(
-        user.uid,
+        effectiveUid,
         {
           name: name.trim() || 'Untitled program',
           subject: subject.trim(),
