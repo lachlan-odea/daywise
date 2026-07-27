@@ -13,7 +13,7 @@ import {
   X,
   Download,
   Crown,
-  Megaphone,
+  ShieldCheck,
   Trophy,
   Eye,
   type LucideIcon,
@@ -243,7 +243,7 @@ export default function AppShell() {
                       to="/app/admin"
                       className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-navy-600 hover:bg-navy-50"
                     >
-                      <Megaphone size={16} /> daywise admin
+                      <ShieldCheck size={16} /> daywise admin
                     </Link>
                   )}
                   <button
