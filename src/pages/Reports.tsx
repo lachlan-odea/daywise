@@ -32,6 +32,7 @@ import {
   type ReportPeriod,
   type FocusSeverity,
 } from '../lib/reports'
+import { markAchievementEvent } from '../lib/achievements'
 
 const fmtDate = (iso: string | null) => {
   if (!iso) return '—'
@@ -61,6 +62,11 @@ export default function Reports() {
   useEffect(() => {
     if (!user) return
     return subscribeTimetable(user.uid, setTt)
+  }, [user])
+
+  // Visiting this page unlocks the "Data Explorer" achievement.
+  useEffect(() => {
+    if (user) markAchievementEvent(user.uid, 'reportsVisited').catch(() => {})
   }, [user])
 
   useEffect(() => {
@@ -120,9 +126,19 @@ export default function Reports() {
     const endISO = period === 'term' && k.termNumber ? termEndISO(tt, now) : toISO(now)
     const rows = (entries ?? []).filter((e) => e.date >= startISO && e.date <= endISO)
     downloadCsv(`daywise-evidence-register-${period}.csv`, evidenceRegisterCsv(rows))
+    if (user) {
+      markAchievementEvent(user.uid, 'evidenceRegister').catch(() => {})
+      markAchievementEvent(user.uid, 'reportGenerated').catch(() => {})
+    }
   }
-  const runProgramReport = () => downloadCsv(`daywise-program-report-${period}.csv`, programReportCsv(ov.programs))
-  const runTermSummary = () => window.print()
+  const runProgramReport = () => {
+    downloadCsv(`daywise-program-report-${period}.csv`, programReportCsv(ov.programs))
+    if (user) markAchievementEvent(user.uid, 'reportGenerated').catch(() => {})
+  }
+  const runTermSummary = () => {
+    if (user) markAchievementEvent(user.uid, 'reportGenerated').catch(() => {})
+    window.print()
+  }
 
   return (
     <main className="mx-auto max-w-6xl px-5 py-8 sm:px-8">

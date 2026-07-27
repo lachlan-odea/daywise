@@ -172,6 +172,16 @@ the model.
 
 ---
 
+### 14. Achievements (gamification)
+- **Achievement Badges** page (profile menu) that awards badges automatically from teaching
+  activity, across categories: Consistency (streaks, week/month/term/year completeness),
+  Milestones (10→1000 lessons), Programs (started/completed/five/outcome coverage), Evidence
+  (first/100/500, accreditation-ready), Features & Feedback (data explorer, first report, feedback
+  champion), and Special (Founding Teacher, Beta Pioneer).
+- Locked badges show progress where relevant; a few (community sharing, bug-fixed) unlock as those
+  features arrive. Lightweight event flags (`users/{uid}/meta/achievements`) record report/dashboard
+  usage.
+
 ## Planned / not yet built
 - Student-level records and reporting.
 - Billing/subscription management (plans are display-only today).
@@ -184,6 +194,8 @@ the model.
 _Newest first. Each entry corresponds to work pushed to `main`._
 
 ### 2026-07-27
+- Added an **Achievements** page (profile menu) — auto-awarded badges across consistency,
+  milestones, programs, evidence, features/feedback and special categories, to gamify usage.
 - Shipped the **Data & Reports** section — Teaching Overview (KPI cards, program snapshot, weekly
   timeline, upcoming focus) with This Term / Year-to-Date toggle and CSV/print quick reports.
   Enabled the nav item (removed "Soon").

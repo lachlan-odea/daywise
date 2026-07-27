@@ -14,6 +14,7 @@ import {
   Download,
   Crown,
   Megaphone,
+  Trophy,
   type LucideIcon,
 } from 'lucide-react'
 import { LogoMark, Wordmark } from './Logo'
@@ -224,6 +225,12 @@ export default function AppShell() {
                     <p className="truncate text-xs text-navy-400">{user?.email}</p>
                   </div>
                   <div className="my-1 h-px bg-navy-100" />
+                  <Link
+                    to="/app/achievements"
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-navy-600 hover:bg-navy-50"
+                  >
+                    <Trophy size={16} /> Achievements
+                  </Link>
                   <Link
                     to="/app/settings"
                     className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-navy-600 hover:bg-navy-50"
