@@ -208,6 +208,9 @@ the model.
 _Newest first. Each entry corresponds to work pushed to `main`._
 
 ### 2026-07-28
+- Fixed **voice recording duplicating words on mobile** — speech recognition now runs
+  non-continuous with auto-restart (one clean final per utterance) instead of concatenating the
+  whole results array, which Android Chrome re-emitted as growing partial finals.
 - Timetable cell editor: mark a cell as **Class or Meeting**; meetings are shown but non-recordable
   everywhere (Record, dashboard, diary, achievements).
 - Achievement unlocks now also add a **notification-bell entry** (per-user notifications) and fire a
