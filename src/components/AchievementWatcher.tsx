@@ -8,6 +8,7 @@ import { subscribeEntries, type LessonEntry } from '../lib/entries'
 import { subscribePrograms, getProgram } from '../lib/programs'
 import { subscribeTimetable, type Timetable } from '../lib/timetable'
 import type { LoadedProgram } from '../lib/reports'
+import { addNotification } from '../lib/notifications'
 import {
   BADGES, computeStats, isBadgeEarned,
   subscribeAchievementEvents, subscribeManualBadges,
@@ -101,7 +102,10 @@ export default function AchievementWatcher() {
     const toast = (ids: string[]) => {
       ids.forEach((id, i) => {
         const b = BADGES.find((x) => x.id === id)
-        if (b) setTimeout(() => showAchievement(b.title, b.description), i * 900)
+        if (!b) return
+        setTimeout(() => showAchievement(b.title, b.description), i * 900)
+        // Also drop a matching entry in the notification bell.
+        addNotification(activeUid, { type: 'achievement', title: `Achievement unlocked: ${b.title}`, body: b.description }).catch(() => {})
       })
     }
 

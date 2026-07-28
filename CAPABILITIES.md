@@ -189,7 +189,9 @@ the model.
 - **Admins can grant any badge** to a user from the admin usage table (grant-only, never revokes);
   granted badges count as earned alongside auto-awarded ones.
 - **"Achievement unlocked" toast** pops when a new badge is earned (each shown once; seeds silently
-  on first run; suppressed while an admin is viewing as another user).
+  on first run; suppressed while an admin is viewing as another user), with a subtle **confetti
+  burst** (respects reduced-motion). A matching entry is also added to the **notification bell**
+  (per-user notifications, `users/{uid}/notifications`).
 
 ## Planned / not yet built
 - Student-level records and reporting.
@@ -203,6 +205,8 @@ the model.
 _Newest first. Each entry corresponds to work pushed to `main`._
 
 ### 2026-07-28
+- Achievement unlocks now also add a **notification-bell entry** (per-user notifications) and fire a
+  subtle **confetti burst** alongside the toast.
 - Added an **"Achievement unlocked" toast** that fires when a badge is newly earned (toast system +
   background watcher; one-time per badge, seeded silently, off during view-as).
 - Admin can **grant achievement badges** to a user (grant-only) from the App usage table; scoped

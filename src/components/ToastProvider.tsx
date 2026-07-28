@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { Trophy, X } from 'lucide-react'
+import { burstConfetti } from '../lib/confetti'
 
 interface Toast {
   id: number
@@ -24,6 +25,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const showAchievement = useCallback((title: string, description: string) => {
     const id = ++counter
     setToasts((t) => [...t, { id, title, description }])
+    burstConfetti()
     setTimeout(() => remove(id), 7000)
   }, [])
 
