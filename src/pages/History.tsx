@@ -194,7 +194,7 @@ export default function History() {
     return tt.periods
       .filter((p) => isTeachingPeriod(p.label))
       .map((p) => tt.cells[cellKey(week, p.id, wd)])
-      .filter((c): c is ClassCell => !!c)
+      .filter((c): c is ClassCell => !!c && c.kind !== 'meeting')
   }
 
   // Evidence-coverage status for a day's pill: green=all classes recorded, yellow=some, red=none.
@@ -224,7 +224,7 @@ export default function History() {
       for (const p of tt.periods) {
         if (!isTeachingPeriod(p.label)) continue
         const cell = tt.cells[cellKey(week, p.id, weekday)]
-        if (!cell) continue
+        if (!cell || cell.kind === 'meeting') continue
         const entry = selectedEntries.find((e) => sameClass(e, cell))
         if (entry?.id) used.add(entry.id)
         const t = effectiveTime(tt, p, week, weekday)

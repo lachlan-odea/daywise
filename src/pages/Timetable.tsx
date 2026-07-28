@@ -487,6 +487,11 @@ export default function Timetable() {
                           }`}
                         >
                           <p className="text-xs font-bold leading-tight">{cell.subject || cell.className}</p>
+                          {cell.kind === 'meeting' && (
+                            <span className="mt-0.5 inline-block rounded bg-white/60 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide">
+                              Meeting
+                            </span>
+                          )}
                           {cell.subject && cell.className && (
                             <p className="text-[11px] opacity-80">{cell.className}</p>
                           )}
@@ -655,10 +660,12 @@ function CellEditor({
   onClear: () => void
   onSave: (cell: ClassCell, time: TimeSlot | null, applyColorToMatching: boolean) => void
 }) {
+  const [kind, setKind] = useState<'class' | 'meeting'>(initial?.kind === 'meeting' ? 'meeting' : 'class')
   const [subject, setSubject] = useState(initial?.subject ?? '')
   const [className, setClassName] = useState(initial?.className ?? '')
   const [room, setRoom] = useState(initial?.room ?? '')
   const [color, setColor] = useState<ClassColor>(initial?.color ?? 'teal')
+  const isMeeting = kind === 'meeting'
   const [applyColorAll, setApplyColorAll] = useState(false)
   const [customTime, setCustomTime] = useState(!!initialOverride)
   const [start, setStart] = useState(initialOverride?.start ?? defaultTime.start)
@@ -681,7 +688,7 @@ function CellEditor({
         <p className="text-xs font-bold uppercase tracking-wide text-teal-600">
           {dayLabel} · {periodLabel}
         </p>
-        <h3 className="mt-1 text-lg font-bold text-navy-900">Edit class</h3>
+        <h3 className="mt-1 text-lg font-bold text-navy-900">Edit {isMeeting ? 'meeting' : 'class'}</h3>
 
         <form
           className="mt-5 space-y-4"
@@ -692,19 +699,60 @@ function CellEditor({
                 ? { start, end }
                 : null
             onSave(
-              { subject: subject.trim(), className: className.trim(), room: room.trim() || undefined, color },
+              {
+                subject: subject.trim(),
+                className: className.trim(),
+                room: room.trim() || undefined,
+                color,
+                kind: isMeeting ? 'meeting' : undefined,
+              },
               override,
               applyColorAll,
             )
           }}
         >
+          <div>
+            <span className="mb-1.5 block text-sm font-semibold text-navy-800">Type</span>
+            <div className="flex gap-1 rounded-xl bg-navy-50 p-1">
+              {([
+                { id: 'class', label: 'Class' },
+                { id: 'meeting', label: 'Meeting' },
+              ] as const).map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setKind(t.id)}
+                  className={`flex-1 rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors ${
+                    kind === t.id ? 'bg-white text-navy-900 shadow-sm' : 'text-navy-500 hover:text-navy-700'
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+            {isMeeting && (
+              <p className="mt-1.5 text-xs text-navy-400">Meetings show on your timetable but aren’t recordable lessons.</p>
+            )}
+          </div>
+
           <label className="block">
-            <span className="mb-1.5 block text-sm font-semibold text-navy-800">Subject</span>
-            <input className={inputCls} value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Science" autoFocus />
+            <span className="mb-1.5 block text-sm font-semibold text-navy-800">{isMeeting ? 'Meeting name' : 'Subject'}</span>
+            <input
+              className={inputCls}
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+              placeholder={isMeeting ? 'Staff meeting' : 'Science'}
+              autoFocus
+            />
           </label>
           <label className="block">
-            <span className="mb-1.5 block text-sm font-semibold text-navy-800">Class</span>
-            <input className={inputCls} value={className} onChange={(e) => setClassName(e.target.value)} placeholder="Year 9 · 9SCI1" />
+            <span className="mb-1.5 block text-sm font-semibold text-navy-800">{isMeeting ? 'Detail (optional)' : 'Class'}</span>
+            <input
+              className={inputCls}
+              value={className}
+              onChange={(e) => setClassName(e.target.value)}
+              placeholder={isMeeting ? 'e.g. Faculty · Agenda' : 'Year 9 · 9SCI1'}
+            />
           </label>
           <label className="block">
             <span className="mb-1.5 block text-sm font-semibold text-navy-800">Room (optional)</span>

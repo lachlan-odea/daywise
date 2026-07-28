@@ -149,7 +149,7 @@ function completeness(entries: LessonEntry[], tt: Timetable | null) {
     for (const p of tt.periods) {
       if (!teachingIds.has(p.id)) continue
       const cell = tt.cells[cellKey(week, p.id, wd)]
-      if (cell) keys.push(classKey(cell.subject, cell.className))
+      if (cell && cell.kind !== 'meeting') keys.push(classKey(cell.subject, cell.className))
     }
     return keys
   }

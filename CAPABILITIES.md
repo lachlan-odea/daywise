@@ -62,6 +62,9 @@ the model.
 
 ### 4. Timetable
 - Weekly grid editor: periods (label + times) and per-cell classes (subject, class, room, colour).
+- Each cell can be marked **Class** or **Meeting**; meetings show on the grid (tagged) but are
+  **not recordable** — excluded from Record quick-pick, dashboard Record buttons, the diary's
+  recordable rows/coverage, and consistency achievements.
 - **12-colour palette**; colours auto-assigned on import (matching classes share a colour); a
   cell-editor option to apply a colour to all matching classes.
 - **Fortnightly (Week A / Week B)** support with per-week editing.
@@ -205,6 +208,8 @@ the model.
 _Newest first. Each entry corresponds to work pushed to `main`._
 
 ### 2026-07-28
+- Timetable cell editor: mark a cell as **Class or Meeting**; meetings are shown but non-recordable
+  everywhere (Record, dashboard, diary, achievements).
 - Achievement unlocks now also add a **notification-bell entry** (per-user notifications) and fire a
   subtle **confetti burst** alongside the toast.
 - Added an **"Achievement unlocked" toast** that fires when a badge is newly earned (toast system +

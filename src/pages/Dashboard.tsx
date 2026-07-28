@@ -256,6 +256,15 @@ export default function Dashboard() {
                         <span className="flex items-center gap-2 text-sm font-semibold">
                           {!isNow && <span className={`h-2 w-2 rounded-full ${CLASS_COLORS[color].dot}`} />}
                           {cell.subject || cell.className}
+                          {cell.kind === 'meeting' && (
+                            <span
+                              className={`rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide ${
+                                isNow ? 'bg-white/20 text-white' : 'bg-navy-100 text-navy-500'
+                              }`}
+                            >
+                              Meeting
+                            </span>
+                          )}
                         </span>
                         <span className={`ml-auto text-xs ${isNow ? 'text-navy-200' : 'text-navy-400'}`}>
                           {cell.subject && cell.className ? cell.className : ''}
@@ -277,6 +286,7 @@ export default function Dashboard() {
                           <NotebookPen size={12} /> Notes
                         </button>
                         {isTeachingPeriod(p.label) &&
+                          cell.kind !== 'meeting' &&
                           !!time.start &&
                           time.start <= nowHHMM &&
                           (recordedToday.has(classKey(cell.subject, cell.className)) ? (

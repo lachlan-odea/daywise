@@ -200,7 +200,7 @@ export default function Record() {
     const week = currentWeek(tt)
     return tt.periods
       .map((p) => tt.cells[cellKey(week, p.id, day)])
-      .filter((c): c is NonNullable<typeof c> => !!c)
+      .filter((c): c is NonNullable<typeof c> => !!c && c.kind !== 'meeting')
   }, [tt])
 
   const pickClass = (c: { subject: string; className: string; room?: string }) => {

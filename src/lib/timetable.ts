@@ -27,7 +27,12 @@ export interface ClassCell {
   className: string
   room?: string
   color?: ClassColor
+  /** 'meeting' cells are shown on the timetable but are not recordable teaching classes. */
+  kind?: 'class' | 'meeting'
 }
+
+/** A cell is a recordable teaching class (not a meeting/duty). */
+export const isMeetingCell = (cell?: { kind?: string } | null) => cell?.kind === 'meeting'
 
 export type WeekId = 'A' | 'B'
 export const WEEKS: WeekId[] = ['A', 'B']
