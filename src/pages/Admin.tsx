@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import {
   Megaphone,
@@ -64,6 +64,33 @@ export default function Admin() {
   const viewAs = (u: { uid: string; displayName: string | null; email: string | null }) => {
     startImpersonation(u.uid, u.displayName || u.email || 'user')
     navigate('/app')
+  }
+
+  // Click-and-drag horizontal scrolling for the usage table.
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const drag = useRef({ down: false, startX: 0, scrollLeft: 0, moved: false })
+  const onDragStart = (e: React.MouseEvent) => {
+    const el = scrollRef.current
+    if (!el) return
+    drag.current = { down: true, startX: e.pageX, scrollLeft: el.scrollLeft, moved: false }
+  }
+  const onDragMove = (e: React.MouseEvent) => {
+    const el = scrollRef.current
+    if (!el || !drag.current.down) return
+    const dx = e.pageX - drag.current.startX
+    if (Math.abs(dx) > 4) drag.current.moved = true
+    el.scrollLeft = drag.current.scrollLeft - dx
+  }
+  const onDragEnd = () => {
+    drag.current.down = false
+  }
+  // Swallow the click that ends a drag so buttons/links don't fire.
+  const onDragClickCapture = (e: React.MouseEvent) => {
+    if (drag.current.moved) {
+      e.preventDefault()
+      e.stopPropagation()
+      drag.current.moved = false
+    }
   }
 
   // Grant achievement badges to a user
@@ -341,11 +368,19 @@ export default function Admin() {
               </div>
 
               {/* Per-user table */}
-              <div className="mt-6 overflow-x-auto rounded-2xl border border-navy-100 bg-white">
+              <div
+                ref={scrollRef}
+                onMouseDown={onDragStart}
+                onMouseMove={onDragMove}
+                onMouseUp={onDragEnd}
+                onMouseLeave={onDragEnd}
+                onClickCapture={onDragClickCapture}
+                className="mt-6 cursor-grab select-none overflow-x-auto rounded-2xl border border-navy-100 bg-white active:cursor-grabbing"
+              >
                 <table className="w-full min-w-[880px] border-collapse text-left text-sm [&_td]:px-4 [&_td]:py-3.5 [&_td]:align-middle [&_th]:px-4 [&_th]:py-3">
                   <thead>
                     <tr className="border-b border-navy-100 bg-cloud/40 text-[11px] font-bold uppercase tracking-wide text-navy-400">
-                      <th className="text-left">User</th>
+                      <th className="sticky left-0 z-20 border-r border-navy-100 bg-white text-left">User</th>
                       <th className="text-left">Plan</th>
                       <th className="text-left">School / State</th>
                       <th className="whitespace-nowrap text-left">Joined</th>
@@ -366,7 +401,7 @@ export default function Admin() {
                     ) : (
                       usage.users.map((u) => (
                         <tr key={u.uid} className="border-b border-navy-50 last:border-0 hover:bg-navy-50/40">
-                          <td>
+                          <td className="sticky left-0 z-10 border-r border-navy-100 bg-white">
                             <p className="font-semibold text-navy-900">{u.displayName || '—'}</p>
                             <p className="text-xs text-navy-400">{u.email || u.uid}</p>
                           </td>
