@@ -17,6 +17,7 @@ import {
   RefreshCw,
   BarChart3,
   ShieldCheck,
+  Award,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useConfirm } from '../components/ConfirmProvider'
@@ -31,6 +32,7 @@ import {
 } from '../lib/announcements'
 import { getUsageStats, type UsageStats } from '../lib/adminStats'
 import { PLAN_LABELS, type Plan } from '../lib/profile'
+import { BADGES, CATEGORY_LABELS, CATEGORY_ORDER, getManualBadges, grantBadge } from '../lib/achievements'
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 // Compact, comma-free date so it never wraps in a narrow column (e.g. "3 Jul 26").
@@ -62,6 +64,27 @@ export default function Admin() {
   const viewAs = (u: { uid: string; displayName: string | null; email: string | null }) => {
     startImpersonation(u.uid, u.displayName || u.email || 'user')
     navigate('/app')
+  }
+
+  // Grant achievement badges to a user
+  const [badgeUser, setBadgeUser] = useState<{ uid: string; name: string } | null>(null)
+  const [grantedIds, setGrantedIds] = useState<string[]>([])
+  const [grantingId, setGrantingId] = useState<string | null>(null)
+
+  const openBadges = async (u: { uid: string; displayName: string | null; email: string | null }) => {
+    setBadgeUser({ uid: u.uid, name: u.displayName || u.email || 'user' })
+    setGrantedIds([])
+    setGrantedIds(await getManualBadges(u.uid))
+  }
+  const grant = async (badgeId: string) => {
+    if (!badgeUser) return
+    setGrantingId(badgeId)
+    try {
+      await grantBadge(badgeUser.uid, badgeId)
+      setGrantedIds((prev) => (prev.includes(badgeId) ? prev : [...prev, badgeId]))
+    } finally {
+      setGrantingId(null)
+    }
   }
   const [items, setItems] = useState<Announcement[]>([])
   const [title, setTitle] = useState('')
@@ -391,12 +414,21 @@ export default function Admin() {
                           </td>
                           <td className="text-right font-bold text-navy-900">{u.lessonCount}</td>
                           <td className="text-right">
-                            <button
-                              onClick={() => viewAs(u)}
-                              className="whitespace-nowrap rounded-full border border-navy-200 px-3 py-1.5 text-xs font-semibold text-navy-600 hover:bg-navy-50"
-                            >
-                              View as
-                            </button>
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                onClick={() => openBadges(u)}
+                                className="flex items-center gap-1 whitespace-nowrap rounded-full border border-navy-200 px-3 py-1.5 text-xs font-semibold text-navy-600 hover:bg-navy-50"
+                                title="Grant achievement badges"
+                              >
+                                <Award size={13} /> Badges
+                              </button>
+                              <button
+                                onClick={() => viewAs(u)}
+                                className="whitespace-nowrap rounded-full border border-navy-200 px-3 py-1.5 text-xs font-semibold text-navy-600 hover:bg-navy-50"
+                              >
+                                View as
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))
@@ -406,6 +438,72 @@ export default function Admin() {
               </div>
             </>
           ) : null}
+        </div>
+      )}
+
+      {/* Grant badges modal */}
+      {badgeUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-navy-950/50" onClick={() => setBadgeUser(null)} />
+          <div className="relative flex max-h-[85vh] w-full max-w-lg flex-col rounded-3xl bg-white shadow-card">
+            <div className="flex items-start justify-between gap-3 border-b border-navy-100 p-5">
+              <div>
+                <h3 className="flex items-center gap-2 text-lg font-bold text-navy-900">
+                  <Award size={18} className="text-amber-500" /> Grant badges
+                </h3>
+                <p className="mt-0.5 text-sm text-navy-500">
+                  Award achievement badges to <b>{badgeUser.name}</b>. Grants are additive and can’t be removed here.
+                </p>
+              </div>
+              <button
+                onClick={() => setBadgeUser(null)}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-navy-400 hover:bg-navy-50"
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="overflow-y-auto p-5">
+              <div className="space-y-5">
+                {CATEGORY_ORDER.map((cat) => (
+                  <div key={cat}>
+                    <p className="mb-2 text-xs font-bold uppercase tracking-wide text-navy-400">{CATEGORY_LABELS[cat].title}</p>
+                    <div className="space-y-1.5">
+                      {BADGES.filter((b) => b.category === cat).map((b) => {
+                        const isGranted = grantedIds.includes(b.id)
+                        return (
+                          <div key={b.id} className="flex items-center gap-3 rounded-xl border border-navy-100 px-3 py-2">
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-bold text-navy-900">{b.title}</p>
+                              <p className="truncate text-xs text-navy-400">{b.description}</p>
+                            </div>
+                            {isGranted ? (
+                              <span className="flex shrink-0 items-center gap-1 text-xs font-bold text-emerald-600">
+                                <Check size={13} /> Granted
+                              </span>
+                            ) : (
+                              <button
+                                onClick={() => grant(b.id)}
+                                disabled={grantingId === b.id}
+                                className="shrink-0 rounded-full bg-teal-500 px-3 py-1.5 text-xs font-bold text-white hover:bg-teal-600 disabled:opacity-60"
+                              >
+                                {grantingId === b.id ? <Loader2 size={13} className="animate-spin" /> : 'Grant'}
+                              </button>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="border-t border-navy-100 p-4 text-right">
+              <button onClick={() => setBadgeUser(null)} className="btn-primary text-sm">
+                Done
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </main>

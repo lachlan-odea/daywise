@@ -186,6 +186,8 @@ the model.
 - Locked badges show progress where relevant; a few (community sharing, bug-fixed) unlock as those
   features arrive. Lightweight event flags (`users/{uid}/meta/achievements`) record report/dashboard
   usage.
+- **Admins can grant any badge** to a user from the admin usage table (grant-only, never revokes);
+  granted badges count as earned alongside auto-awarded ones.
 
 ## Planned / not yet built
 - Student-level records and reporting.
@@ -199,6 +201,8 @@ the model.
 _Newest first. Each entry corresponds to work pushed to `main`._
 
 ### 2026-07-28
+- Admin can **grant achievement badges** to a user (grant-only) from the App usage table; scoped
+  Firestore rule lets admins write the `meta/achievements` doc.
 - Timetable: added a **"This week is: Week A / Week B"** control (shown when term dates are set) so
   schools whose A/B doesn't reset each term can correct the phase — previously the week was locked
   to "each term starts on Week A" (`termStartWeek` field).

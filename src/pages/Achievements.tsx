@@ -14,7 +14,8 @@ import { getProgramList, getProgram } from '../lib/programs'
 import { subscribeTimetable, type Timetable } from '../lib/timetable'
 import type { LoadedProgram } from '../lib/reports'
 import {
-  BADGES, CATEGORY_LABELS, CATEGORY_ORDER, computeStats, subscribeAchievementEvents,
+  BADGES, CATEGORY_LABELS, CATEGORY_ORDER, computeStats, isBadgeEarned, subscribeAchievementEvents,
+  subscribeManualBadges,
   type AchievementEvents, type Badge, type BadgeCategory, type Stats,
 } from '../lib/achievements'
 
@@ -43,7 +44,7 @@ const MILESTONE_NUM: Record<string, string> = {
 }
 
 function BadgeMedal({ badge, stats }: { badge: Badge; stats: Stats }) {
-  const earned = badge.earned(stats)
+  const earned = isBadgeEarned(badge, stats)
   const color = CAT_COLOR[badge.category]
   const Icon = ICONS[badge.id] ?? Award
   const num = MILESTONE_NUM[badge.id]
@@ -85,6 +86,7 @@ export default function Achievements() {
   const [programs, setPrograms] = useState<LoadedProgram[] | null>(null)
   const [tt, setTt] = useState<Timetable | null>(null)
   const [events, setEvents] = useState<AchievementEvents>({})
+  const [granted, setGranted] = useState<string[]>([])
   const [feedbackCount, setFeedbackCount] = useState(0)
 
   useEffect(() => {
@@ -95,6 +97,11 @@ export default function Achievements() {
   useEffect(() => {
     if (!user) return
     return subscribeAchievementEvents(effectiveUid, setEvents)
+  }, [user])
+
+  useEffect(() => {
+    if (!user) return
+    return subscribeManualBadges(effectiveUid, setGranted)
   }, [user])
 
   useEffect(() => {
@@ -132,10 +139,11 @@ export default function Achievements() {
       feedbackCount,
       events,
       perpetual: (profile?.plan ?? 'starter') === 'perpetual',
+      granted,
     })
-  }, [entries, programs, tt, feedbackCount, events, profile])
+  }, [entries, programs, tt, feedbackCount, events, granted, profile])
 
-  const earnedCount = useMemo(() => (stats ? BADGES.filter((b) => b.earned(stats)).length : 0), [stats])
+  const earnedCount = useMemo(() => (stats ? BADGES.filter((b) => isBadgeEarned(b, stats)).length : 0), [stats])
 
   if (loading || !stats) {
     return (
@@ -170,7 +178,7 @@ export default function Achievements() {
         {CATEGORY_ORDER.map((cat) => {
           const badges = BADGES.filter((b) => b.category === cat)
           const meta = CATEGORY_LABELS[cat]
-          const catEarned = badges.filter((b) => b.earned(stats)).length
+          const catEarned = badges.filter((b) => isBadgeEarned(b, stats)).length
           return (
             <section key={cat} className="rounded-2xl border border-navy-100 bg-white p-5 sm:p-6">
               <div className="grid gap-5 lg:grid-cols-[220px_1fr]">

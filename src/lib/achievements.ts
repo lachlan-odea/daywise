@@ -1,4 +1,4 @@
-import { doc, getDoc, onSnapshot, setDoc } from 'firebase/firestore'
+import { arrayUnion, doc, getDoc, onSnapshot, setDoc } from 'firebase/firestore'
 import { db } from './firebase'
 import type { LessonEntry } from './entries'
 import type { Lesson, Program } from './programs'
@@ -40,6 +40,13 @@ export interface Stats {
   events: AchievementEvents
   perpetual: boolean
   beta: boolean
+  /** Badge ids granted manually by an admin (always count as earned). */
+  granted: string[]
+}
+
+/** A badge is earned if its criteria are met, or an admin has granted it. */
+export function isBadgeEarned(badge: Badge, s: Stats): boolean {
+  return badge.earned(s) || s.granted.includes(badge.id)
 }
 
 const isTeachingPeriod = (label: string) => /^(period\s*|p\s*|lesson\s*)?\d+$/i.test((label || '').trim())
@@ -69,6 +76,32 @@ export async function getAchievementEvents(uid: string): Promise<AchievementEven
 export async function markAchievementEvent(uid: string, key: keyof AchievementEvents) {
   if (!db) return
   await setDoc(doc(db, 'users', uid, 'meta', 'achievements'), { events: { [key]: true } }, { merge: true })
+}
+
+/* ---------------- admin-granted badges ---------------- */
+
+export function subscribeManualBadges(uid: string, cb: (ids: string[]) => void) {
+  if (!db) {
+    cb([])
+    return () => {}
+  }
+  return onSnapshot(
+    doc(db, 'users', uid, 'meta', 'achievements'),
+    (snap) => cb(((snap.data()?.manualBadges as string[]) ?? [])),
+    () => cb([]),
+  )
+}
+
+export async function getManualBadges(uid: string): Promise<string[]> {
+  if (!db) return []
+  const snap = await getDoc(doc(db, 'users', uid, 'meta', 'achievements'))
+  return (snap.data()?.manualBadges as string[]) ?? []
+}
+
+/** Grant a badge to a user (admin only, enforced by Firestore rules). Grant-only — never revokes. */
+export async function grantBadge(uid: string, badgeId: string) {
+  if (!db) throw { code: 'unavailable' }
+  await setDoc(doc(db, 'users', uid, 'meta', 'achievements'), { manualBadges: arrayUnion(badgeId) }, { merge: true })
 }
 
 /* ---------------- stats computation ---------------- */
@@ -184,8 +217,9 @@ export function computeStats(params: {
   feedbackCount: number
   events: AchievementEvents
   perpetual: boolean
+  granted?: string[]
 }): Stats {
-  const { entries, programs, timetable, feedbackCount, events, perpetual } = params
+  const { entries, programs, timetable, feedbackCount, events, perpetual, granted = [] } = params
 
   const hasEvidence = (e: LessonEntry) =>
     !!e.evidence &&
@@ -231,6 +265,7 @@ export function computeStats(params: {
     events,
     perpetual,
     beta: true, // closed beta — every current user
+    granted,
   }
 }
 
