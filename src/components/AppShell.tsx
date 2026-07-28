@@ -22,6 +22,7 @@ import { LogoMark, Wordmark } from './Logo'
 import GlobalSearch from './GlobalSearch'
 import FeedbackButton from './FeedbackButton'
 import NotificationsBell from './NotificationsBell'
+import AchievementWatcher from './AchievementWatcher'
 import { APP_VERSION } from '../version'
 import { useAuth } from '../context/AuthContext'
 import { useProfile } from '../hooks/useProfile'
@@ -160,6 +161,7 @@ export default function AppShell() {
 
   return (
     <div className="min-h-screen bg-cloud">
+      <AchievementWatcher />
       {/* Desktop sidebar */}
       <aside className="fixed inset-y-0 left-0 hidden w-64 flex-col border-r border-navy-100 bg-white lg:flex">
         {SidebarContent}

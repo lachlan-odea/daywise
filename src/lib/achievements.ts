@@ -104,6 +104,21 @@ export async function grantBadge(uid: string, badgeId: string) {
   await setDoc(doc(db, 'users', uid, 'meta', 'achievements'), { manualBadges: arrayUnion(badgeId) }, { merge: true })
 }
 
+/* ---------------- "already toasted" tracking ---------------- */
+
+/** Badge ids the user has already been shown a toast for. `null` = never initialised. */
+export async function getNotifiedBadges(uid: string): Promise<string[] | null> {
+  if (!db) return null
+  const snap = await getDoc(doc(db, 'users', uid, 'meta', 'achievements'))
+  const v = snap.data()?.notified
+  return Array.isArray(v) ? (v as string[]) : null
+}
+
+export async function markBadgesNotified(uid: string, ids: string[]) {
+  if (!db || !ids.length) return
+  await setDoc(doc(db, 'users', uid, 'meta', 'achievements'), { notified: arrayUnion(...ids) }, { merge: true })
+}
+
 /* ---------------- stats computation ---------------- */
 
 interface LoadedProgram {

@@ -188,6 +188,8 @@ the model.
   usage.
 - **Admins can grant any badge** to a user from the admin usage table (grant-only, never revokes);
   granted badges count as earned alongside auto-awarded ones.
+- **"Achievement unlocked" toast** pops when a new badge is earned (each shown once; seeds silently
+  on first run; suppressed while an admin is viewing as another user).
 
 ## Planned / not yet built
 - Student-level records and reporting.
@@ -201,6 +203,8 @@ the model.
 _Newest first. Each entry corresponds to work pushed to `main`._
 
 ### 2026-07-28
+- Added an **"Achievement unlocked" toast** that fires when a badge is newly earned (toast system +
+  background watcher; one-time per badge, seeded silently, off during view-as).
 - Admin can **grant achievement badges** to a user (grant-only) from the App usage table; scoped
   Firestore rule lets admins write the `meta/achievements` doc.
 - Timetable: added a **"This week is: Week A / Week B"** control (shown when term dates are set) so
