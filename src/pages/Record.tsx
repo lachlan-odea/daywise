@@ -319,6 +319,32 @@ export default function Record() {
     }
   }
 
+  const markMissed = async () => {
+    if (!user) return
+    if (!subject.trim() && !className.trim()) {
+      setError('Pick or enter a class to mark as missed.')
+      return
+    }
+    setSaving(true)
+    setError('')
+    try {
+      const id = await saveEntry(effectiveUid, {
+        date,
+        note: note.trim(),
+        subject: subject.trim(),
+        className: className.trim(),
+        room: room.trim() || undefined,
+        outcomes: [],
+        evidence: EMPTY_EVIDENCE,
+        missed: true,
+      })
+      navigate(`/app/history/${id}`)
+    } catch {
+      setError('Could not save. Please try again.')
+      setSaving(false)
+    }
+  }
+
   return (
     <main className="mx-auto max-w-3xl px-5 py-8 sm:px-8">
       <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-teal-600">
@@ -488,6 +514,14 @@ export default function Record() {
             )}
             <button onClick={() => save(false)} disabled={saving || !note.trim()} className="btn-ghost text-sm">
               Save note only
+            </button>
+            <button
+              onClick={markMissed}
+              disabled={saving}
+              className="text-sm font-semibold text-navy-400 hover:text-navy-600"
+              title="Record this class as a missed / cancelled lesson"
+            >
+              Mark as missed
             </button>
           </div>
         </div>

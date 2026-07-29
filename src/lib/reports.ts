@@ -106,7 +106,7 @@ export function buildOverview(params: {
     periodLabel = 'Year to date'
   }
 
-  const inPeriod = entries.filter((e) => e.date >= startISO && e.date <= endISO)
+  const inPeriod = entries.filter((e) => e.date >= startISO && e.date <= endISO && !e.missed)
 
   // KPI: lessons this week (Monday → today)
   const weekStart = toISO(mondayOf(now))
@@ -132,9 +132,10 @@ export function buildOverview(params: {
       e.outcomes?.length
     )
 
-  // KPI: last recorded (across all entries)
+  // KPI: last recorded (across all entries, excluding missed)
   let lastRecorded: Date | null = null
   for (const e of entries) {
+    if (e.missed) continue
     const t = e.createdAt?.toDate?.() ?? (e.date ? new Date(e.date) : null)
     if (t && (!lastRecorded || t > lastRecorded)) lastRecorded = t
   }
@@ -199,7 +200,7 @@ export function buildOverview(params: {
     const weeks = Math.max(1, Math.min(20, daysBetween(start, end) / 7 + 1))
     const counts = new Array(Math.ceil(weeks)).fill(0)
     for (const e of entries) {
-      if (e.date < term.start || e.date > term.end) continue
+      if (e.missed || e.date < term.start || e.date > term.end) continue
       const wk = Math.round(daysBetween(start, mondayOf(new Date(`${e.date}T00:00:00`))) / 7)
       if (wk >= 0 && wk < counts.length) counts[wk]++
     }
@@ -259,7 +260,7 @@ export function evidenceRegisterCsv(entries: LessonEntry[]): string {
     'Note', 'Program annotation', 'Assessment evidence', 'Differentiation', 'Reflection', 'Next steps',
   ]
   const rows = entries
-    .slice()
+    .filter((e) => !e.missed)
     .sort((a, b) => a.date.localeCompare(b.date))
     .map((e) => [
       e.date, e.subject || '', e.className || '', e.room || '', e.programName || '', e.lessonTitle || '',

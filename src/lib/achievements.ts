@@ -235,6 +235,8 @@ export function computeStats(params: {
   granted?: string[]
 }): Stats {
   const { entries, programs, timetable, feedbackCount, events, perpetual, granted = [] } = params
+  // Missed lessons count toward coverage (completeness) but not as taught lessons.
+  const taught = entries.filter((e) => !e.missed)
 
   const hasEvidence = (e: LessonEntry) =>
     !!e.evidence &&
@@ -252,7 +254,7 @@ export function computeStats(params: {
   let outcomeExpert = false
   for (const { program, lessons } of programs) {
     const pid = program.id
-    const progEntries = entries.filter((e) => e.programId === pid)
+    const progEntries = taught.filter((e) => e.programId === pid)
     if (progEntries.length) programsStarted++
     const recordedLessons = new Set(progEntries.map((e) => e.lessonId).filter(Boolean) as string[])
     const total = program.lessonCount || lessons.length || 0
@@ -270,8 +272,8 @@ export function computeStats(params: {
   const cons = completeness(entries, timetable)
 
   return {
-    lessons: entries.length,
-    evidence: entries.filter(hasEvidence).length,
+    lessons: taught.length,
+    evidence: taught.filter(hasEvidence).length,
     programsStarted,
     programsCompleted,
     outcomeExpert,

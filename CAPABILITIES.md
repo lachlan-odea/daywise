@@ -106,6 +106,9 @@ the model.
   Returned outcomes are constrained to the matched lesson so a code can't spread across lessons.
 - Reviewable/editable before saving; gentle hints when reflection/next-steps come back empty.
 - Can pre-fill subject/class/date when launched from the History day view.
+- **Mark as missed** — record a class as a missed/cancelled lesson (optional reason). Missed lessons
+  count toward **coverage** (so they don't break a Perfect Week/Month/Term/Year) but are **not**
+  counted as taught lessons in milestones, program progress, or the reports.
 - Saves to the searchable diary (`users/{uid}/entries`).
 
 ### 7. Diary (teaching diary)
@@ -208,6 +211,9 @@ the model.
 _Newest first. Each entry corresponds to work pushed to `main`._
 
 ### 2026-07-28
+- Record Lesson: **Mark as missed** — a missed/cancelled lesson counts for coverage (doesn't break a
+  Perfect Week) but isn't counted as a taught lesson in milestones, program progress or reports;
+  shown as "Missed" in the diary.
 - Fixed **voice recording duplicating words on mobile** — speech recognition now runs
   non-continuous with auto-restart (one clean final per utterance) instead of concatenating the
   whole results array, which Android Chrome re-emitted as growing partial finals.

@@ -38,6 +38,8 @@ export interface LessonEntry {
   confidence?: string
   outcomes: string[]
   evidence: Evidence
+  /** Marked as a missed/cancelled lesson — counts for coverage but not as a taught lesson. */
+  missed?: boolean
   createdAt?: Timestamp
 }
 

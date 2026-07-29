@@ -337,10 +337,16 @@ export default function EntryDetail() {
         </div>
       ) : (
         <>
+      {entry.missed && (
+        <div className="mt-6 flex items-center gap-2 rounded-2xl border border-navy-200 bg-navy-50 p-4 text-sm font-semibold text-navy-600">
+          <span className="rounded bg-navy-200 px-2 py-0.5 text-[10px] font-bold uppercase text-navy-600">Missed</span>
+          This lesson was marked as missed — it counts for coverage but not as a taught lesson.
+        </div>
+      )}
       {/* the raw note */}
       <div className="mt-6 rounded-2xl border border-navy-100 bg-cloud/60 p-5">
         <p className="mb-1.5 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-navy-400">
-          <Mic size={12} /> What you recorded
+          <Mic size={12} /> {entry.missed ? 'Reason (optional)' : 'What you recorded'}
         </p>
         <p className="whitespace-pre-wrap text-sm leading-relaxed text-navy-700">{entry.note || '—'}</p>
       </div>
@@ -391,7 +397,7 @@ export default function EntryDetail() {
             </div>
           )}
         </div>
-      ) : (
+      ) : entry.missed ? null : (
         <p className="mt-6 rounded-2xl bg-cloud p-5 text-sm text-navy-500">
           No AI evidence was generated for this entry.
         </p>

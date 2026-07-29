@@ -450,7 +450,14 @@ export default function History() {
                                   <span className="text-xs font-normal text-navy-400">{r.cell.className}</span>
                                 )}
                               </p>
-                              {r.entry ? (
+                              {r.entry?.missed ? (
+                                <p className="mt-1.5 flex items-center gap-1.5 text-sm font-semibold text-navy-400">
+                                  <span className="rounded bg-navy-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-navy-500">
+                                    Missed
+                                  </span>
+                                  {r.entry.note ? <span className="font-normal text-navy-500">{r.entry.note}</span> : null}
+                                </p>
+                              ) : r.entry ? (
                                 <p className="mt-1.5 line-clamp-2 text-sm text-navy-600">{overview(r.entry)}</p>
                               ) : (
                                 <p className="mt-1.5 text-sm text-navy-400">No lesson recorded.</p>
