@@ -211,6 +211,8 @@ the model.
 _Newest first. Each entry corresponds to work pushed to `main`._
 
 ### 2026-07-28
+- Polished the **weekly email design** — branded navy header with the daywise wordmark + tagline,
+  table-based layout (robust in Outlook/Gmail), tidier stat tiles and a bulletproof CTA button.
 - Weekly reminder email now sends via **Resend** (was SendGrid) using the Resend HTTP API; dropped
   the `@sendgrid/mail` dependency. Secrets: `RESEND_API_KEY`, `EMAIL_FROM`.
 - Record Lesson: **Mark as missed** — a missed/cancelled lesson counts for coverage (doesn't break a

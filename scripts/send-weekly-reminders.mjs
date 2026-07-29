@@ -107,38 +107,53 @@ function buildEmail({ firstName, lessonsThisWeek, totalLessons, classes, hasProg
 
   const unsubUrl = UNSUB_URL
 
-  const html = `<!doctype html><html><body style="margin:0;background:#f4f6fb;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#1e2a4a">
-  <div style="max-width:520px;margin:0 auto;padding:24px">
-    <div style="text-align:center;padding:8px 0 20px">
-      <span style="font-size:22px;font-weight:800;color:#132145;letter-spacing:-.5px">daywise</span>
-    </div>
-    <div style="background:#fff;border-radius:18px;padding:28px;border:1px solid #e6eaf3">
-      <h1 style="margin:0 0 8px;font-size:20px;color:#132145">${headline}</h1>
-      <p style="margin:0 0 20px;font-size:15px;line-height:1.5;color:#4a577a">${nudge}</p>
-      <div style="display:flex;gap:10px;text-align:center;margin:0 0 24px">
-        <div style="flex:1;background:#f0fdfa;border-radius:12px;padding:14px 8px">
-          <div style="font-size:24px;font-weight:800;color:#0d9488">${lessonsThisWeek}</div>
-          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#5b6b8c">This week</div>
-        </div>
-        <div style="flex:1;background:#f5f7fc;border-radius:12px;padding:14px 8px">
-          <div style="font-size:24px;font-weight:800;color:#132145">${totalLessons}</div>
-          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#5b6b8c">Total recorded</div>
-        </div>
-        <div style="flex:1;background:#f5f7fc;border-radius:12px;padding:14px 8px">
-          <div style="font-size:24px;font-weight:800;color:#132145">${classes}</div>
-          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#5b6b8c">Classes</div>
-        </div>
-      </div>
-      <div style="text-align:center">
-        <a href="${recordUrl}" style="display:inline-block;background:#14b8a6;color:#fff;text-decoration:none;font-weight:700;font-size:15px;padding:12px 28px;border-radius:999px">Record a lesson</a>
-      </div>
-    </div>
-    <p style="text-align:center;font-size:12px;color:#8894b0;margin:20px 0 0;line-height:1.5">
-      You’re receiving this because you use daywise.
-      <a href="${dashUrl}" style="color:#8894b0">Open daywise</a> ·
-      <a href="${unsubUrl}" style="color:#8894b0">Unsubscribe</a>
-    </p>
-  </div></body></html>`
+  const stat = (value, label, accent) => `
+                <td width="33%" valign="top" style="padding:0 4px;">
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+                    <td align="center" style="background:${accent ? '#f0fdfa' : '#f5f7fc'};border-radius:12px;padding:16px 6px;">
+                      <div style="font-size:26px;font-weight:800;line-height:1;color:${accent ? '#0d9488' : '#132145'};">${value}</div>
+                      <div style="margin-top:6px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#5b6b8c;">${label}</div>
+                    </td>
+                  </tr></table>
+                </td>`
+
+  const html = `<!doctype html>
+<html>
+  <body style="margin:0;padding:0;background:#eef2fb;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#eef2fb;">
+      <tr><td align="center" style="padding:24px 12px;">
+        <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">
+          <tr><td style="background:#132145;border-radius:16px 16px 0 0;padding:26px 30px;text-align:center;">
+            <img src="${APP_URL}/brand-wordmark-white.png" alt="daywise" height="24" style="height:24px;width:auto;display:inline-block;border:0;" />
+            <div style="margin-top:8px;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#5dd2b1;">Teach. Talk. Done.</div>
+          </td></tr>
+          <tr><td style="background:#ffffff;border-left:1px solid #e6eaf3;border-right:1px solid #e6eaf3;padding:30px 30px 8px;">
+            <h1 style="margin:0 0 10px;font-size:20px;line-height:1.35;color:#132145;">${headline}</h1>
+            <p style="margin:0 0 22px;font-size:15px;line-height:1.6;color:#4a577a;">${nudge}</p>
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+              ${stat(lessonsThisWeek, 'This week', true)}
+              ${stat(totalLessons, 'Total recorded', false)}
+              ${stat(classes, 'Classes', false)}
+            </tr></table>
+            <table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin:28px auto 6px;">
+              <tr><td align="center" style="border-radius:999px;background:#14b8a6;">
+                <a href="${recordUrl}" style="display:inline-block;padding:13px 34px;font-size:15px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:999px;">Record a lesson &rarr;</a>
+              </td></tr>
+            </table>
+          </td></tr>
+          <tr><td style="background:#ffffff;border-radius:0 0 16px 16px;border:1px solid #e6eaf3;border-top:0;padding:18px 30px 26px;text-align:center;">
+            <div style="border-top:1px solid #eef2fb;padding-top:18px;font-size:12px;line-height:1.7;color:#8894b0;">
+              You&rsquo;re receiving this because you use daywise.<br/>
+              <a href="${dashUrl}" style="color:#0d9488;text-decoration:none;font-weight:600;">Open daywise</a>
+              &nbsp;&middot;&nbsp;
+              <a href="${unsubUrl}" style="color:#8894b0;text-decoration:underline;">Unsubscribe</a>
+            </div>
+          </td></tr>
+        </table>
+      </td></tr>
+    </table>
+  </body>
+</html>`
 
   const text = `${headline}\n\n${nudge}\n\nThis week: ${lessonsThisWeek} · Total recorded: ${totalLessons} · Classes: ${classes}\n\nRecord a lesson: ${recordUrl}\n\nUnsubscribe: ${unsubUrl}`
 
