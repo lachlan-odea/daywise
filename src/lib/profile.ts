@@ -1,4 +1,15 @@
-import { doc, onSnapshot, serverTimestamp, setDoc, type Timestamp } from 'firebase/firestore'
+import {
+  collection,
+  deleteDoc,
+  doc,
+  getDocs,
+  onSnapshot,
+  serverTimestamp,
+  setDoc,
+  writeBatch,
+  type DocumentReference,
+  type Timestamp,
+} from 'firebase/firestore'
 import { db } from './firebase'
 
 export type Plan = 'starter' | 'pro' | 'school' | 'perpetual'
@@ -45,6 +56,42 @@ export function subscribeProfile(uid: string, cb: (profile: UserProfile | null) 
 export async function updateUserProfileDoc(uid: string, data: Partial<UserProfile>) {
   if (!db) throw { code: 'unavailable' }
   await setDoc(doc(db, 'users', uid), { ...data, updatedAt: serverTimestamp() }, { merge: true })
+}
+
+async function deleteRefs(refs: DocumentReference[]) {
+  if (!db) return
+  for (let i = 0; i < refs.length; i += 400) {
+    const batch = writeBatch(db)
+    refs.slice(i, i + 400).forEach((r) => batch.delete(r))
+    await batch.commit()
+  }
+}
+
+/**
+ * Deletes ALL of a user's data under users/{uid} — every subcollection (Firestore
+ * doesn't cascade), then the profile document. Best-effort: run before deleting the
+ * auth account so a failure leaves the account intact to retry.
+ */
+export async function deleteAllUserData(uid: string) {
+  if (!db) return
+  const database = db
+
+  // Programs have a nested `lessons` subcollection — clear those first.
+  const programs = await getDocs(collection(database, 'users', uid, 'programs'))
+  for (const p of programs.docs) {
+    const lessons = await getDocs(collection(database, 'users', uid, 'programs', p.id, 'lessons'))
+    await deleteRefs(lessons.docs.map((d) => d.ref))
+  }
+  await deleteRefs(programs.docs.map((d) => d.ref))
+
+  // Flat per-user subcollections.
+  for (const c of ['entries', 'feedback', 'notifications', 'planning', 'timetable', 'meta']) {
+    const snap = await getDocs(collection(database, 'users', uid, c))
+    await deleteRefs(snap.docs.map((d) => d.ref))
+  }
+
+  // Finally the profile document itself.
+  await deleteDoc(doc(database, 'users', uid))
 }
 
 export const PLAN_LABELS: Record<Plan, string> = {

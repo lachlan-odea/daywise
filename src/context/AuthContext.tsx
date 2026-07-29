@@ -15,9 +15,10 @@ import {
   type User,
   type AuthProvider as FirebaseAuthProvider,
 } from 'firebase/auth'
-import { doc, deleteDoc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore'
+import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore'
 import { auth, db, googleProvider, microsoftProvider } from '../lib/firebase'
 import { isAdmin } from '../lib/admin'
+import { deleteAllUserData } from '../lib/profile'
 
 const IMPERSONATE_KEY = 'daywise:impersonate'
 
@@ -136,7 +137,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const u = requireAuth().currentUser
     if (!u) throw { code: 'auth/no-current-user' }
     await reauthenticate(currentPassword)
-    if (db) await deleteDoc(doc(db, 'users', u.uid))
+    // Remove all Firestore data first (subcollections don't cascade); if this
+    // fails the auth account is left intact so the user can retry.
+    await deleteAllUserData(u.uid)
     await deleteUser(u)
   }
 

@@ -50,7 +50,8 @@ the model.
   - Profile — name, school/organisation, role, and **state/territory**.
   - Account & security — email display; change password (email/password accounts).
   - Subscription — current plan and status.
-  - Danger zone — delete account (with re-authentication).
+  - Danger zone — delete account (with re-authentication); **erases all the user's Firestore data**
+    (every subcollection) and the auth account.
 - Per-user profile stored in Firestore (`users/{uid}`).
 
 ### 3. Plans & entitlements
@@ -211,6 +212,9 @@ the model.
 _Newest first. Each entry corresponds to work pushed to `main`._
 
 ### 2026-07-28
+- **Account deletion now erases all Firestore data** — previously only the profile doc + auth user
+  were removed, orphaning subcollections (timetable, programs/lessons, entries, planning,
+  notifications, meta, feedback). Now cascades through every subcollection first.
 - Weekly email: added a **recording-streak** line and a proper **one-tap unsubscribe** page
   (`/app/unsubscribe`) — clicking Unsubscribe now turns off reminders instantly (with re-enable),
   instead of sending users to Settings.
