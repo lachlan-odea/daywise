@@ -18,6 +18,7 @@ import Settings from './pages/Settings'
 import Admin from './pages/Admin'
 import Reports from './pages/Reports'
 import Achievements from './pages/Achievements'
+import Unsubscribe from './pages/Unsubscribe'
 
 export default function App() {
   return (
@@ -47,6 +48,7 @@ export default function App() {
             <Route path="settings" element={<Settings />} />
             <Route path="reports" element={<Reports />} />
             <Route path="achievements" element={<Achievements />} />
+            <Route path="unsubscribe" element={<Unsubscribe />} />
             <Route path="admin" element={<Admin />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />

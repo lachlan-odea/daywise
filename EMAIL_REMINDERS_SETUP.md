@@ -5,9 +5,10 @@ record their lessons. It runs as a GitHub Actions cron job (`.github/workflows/w
 that reads Firestore with the Firebase Admin SDK and sends via **Resend**. No Firebase Blaze plan
 or server is required.
 
-Users are opted in by default and can opt out via **Settings → Notifications** (the `emailReminders`
-flag on their profile) or the **Unsubscribe** link in any email (also sent as a `List-Unsubscribe`
-header).
+Users are opted in by default. The **Unsubscribe** link in any email (also sent as a
+`List-Unsubscribe` header) opens `/app/unsubscribe`, which turns off `emailReminders` in one tap
+for the signed-in user (with a "re-enable" option). They can also toggle it in
+**Settings → Notifications**.
 
 ## One-time setup
 
@@ -49,5 +50,6 @@ Australian send time shifts by an hour across daylight saving.)
 
 ## What the email contains
 Per-teacher: lessons recorded **this week**, **total** lessons recorded, number of **classes** in
-their timetable, and a context-aware nudge (upload a program / record your first lesson / keep it up),
-with a **Record a lesson** button and an unsubscribe link.
+their timetable, a **recording streak** (consecutive teaching days recorded, shown at 2+), and a
+context-aware nudge (upload a program / record your first lesson / keep it up), with a **Record a
+lesson** button and an unsubscribe link.

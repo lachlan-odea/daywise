@@ -42,7 +42,7 @@ admin.initializeApp({ credential: admin.credential.cert(JSON.parse(FIREBASE_SERV
 const db = admin.firestore()
 
 const FROM = EMAIL_FROM_NAME ? `${EMAIL_FROM_NAME} <${EMAIL_FROM}>` : EMAIL_FROM
-const UNSUB_URL = `${APP_URL}/app/settings`
+const UNSUB_URL = `${APP_URL}/app/unsubscribe`
 
 /** Send one email via the Resend HTTP API. */
 async function sendEmail(to, subject, html, text) {
@@ -85,7 +85,72 @@ function classCount(tt) {
   return seen.size
 }
 
-function buildEmail({ firstName, lessonsThisWeek, totalLessons, classes, hasProgram }) {
+/* ---- minimal timetable date helpers (mirror src/lib/timetable.ts) ---- */
+const toISODate = (d) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+const mondayOf = (d) => {
+  const x = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+  x.setDate(x.getDate() - ((x.getDay() + 6) % 7))
+  return x
+}
+const termIndex = (tt, date) => {
+  const iso = toISODate(date)
+  const terms = tt?.terms ?? []
+  for (let i = 0; i < terms.length; i++) if (terms[i]?.start && terms[i]?.end && iso >= terms[i].start && iso <= terms[i].end) return i
+  return -1
+}
+const weekAB = (tt, date) => {
+  if (!tt?.fortnightly) return 'A'
+  const idx = termIndex(tt, date)
+  if (idx >= 0 && tt.terms?.[idx]?.start) {
+    const [y, m, d] = tt.terms[idx].start.split('-').map(Number)
+    const start = mondayOf(new Date(y, (m || 1) - 1, d || 1))
+    const w = Math.round((mondayOf(date).getTime() - start.getTime()) / (7 * 86_400_000))
+    const off = tt.termStartWeek === 'B' ? 1 : 0
+    return (((w + off) % 2) + 2) % 2 === 0 ? 'A' : 'B'
+  }
+  return 'A'
+}
+
+/**
+ * Current recording streak: consecutive teaching days (most recent first) that
+ * have a recorded lesson. Missed lessons are neutral (don't break it); today is
+ * given grace if nothing's recorded yet.
+ */
+function computeStreak(recorded, missed, tt) {
+  if (!tt?.periods?.length) return 0
+  const teachingIds = new Set(tt.periods.filter((p) => isTeachingPeriod(p.label)).map((p) => p.id))
+  const hasCalendar = (tt.terms ?? []).some((t) => t?.start && t?.end)
+  const scheduled = (d) => {
+    const wd = (d.getDay() + 6) % 7
+    if (wd > 4) return false
+    if (hasCalendar && termIndex(tt, d) < 0) return false
+    const week = weekAB(tt, d)
+    for (const p of tt.periods) {
+      if (!teachingIds.has(p.id)) continue
+      if (tt.cells?.[`${week}__${p.id}__${wd}`]) return true
+    }
+    return false
+  }
+  const todayISO = toISODate(new Date())
+  let streak = 0
+  const d = new Date()
+  for (let i = 0; i < 140; i++) {
+    if (scheduled(d)) {
+      const iso = toISODate(d)
+      if (recorded.has(iso)) streak++
+      else if (missed.has(iso)) {
+        /* neutral */
+      } else if (iso === todayISO) {
+        /* grace — today may not be finished */
+      } else break
+    }
+    d.setDate(d.getDate() - 1)
+  }
+  return streak
+}
+
+function buildEmail({ firstName, lessonsThisWeek, totalLessons, classes, hasProgram, streak = 0 }) {
   const recordUrl = `${APP_URL}/app/record`
   const dashUrl = `${APP_URL}/app`
 
@@ -106,6 +171,15 @@ function buildEmail({ firstName, lessonsThisWeek, totalLessons, classes, hasProg
       : `Keep the momentum going — record any lessons you haven’t captured yet while they’re fresh.`
 
   const unsubUrl = UNSUB_URL
+
+  const streakRow =
+    streak >= 2
+      ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;"><tr>
+              <td style="background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;padding:12px 16px;font-size:14px;font-weight:700;color:#9a3412;">
+                &#128293; ${streak}-day recording streak — keep it going!
+              </td>
+            </tr></table>`
+      : ''
 
   const stat = (value, label, accent) => `
                 <td width="33%" valign="top" style="padding:0 4px;">
@@ -130,6 +204,7 @@ function buildEmail({ firstName, lessonsThisWeek, totalLessons, classes, hasProg
           <tr><td style="background:#ffffff;border-left:1px solid #e6eaf3;border-right:1px solid #e6eaf3;padding:30px 30px 8px;">
             <h1 style="margin:0 0 10px;font-size:20px;line-height:1.35;color:#132145;">${headline}</h1>
             <p style="margin:0 0 22px;font-size:15px;line-height:1.6;color:#4a577a;">${nudge}</p>
+            ${streakRow}
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
               ${stat(lessonsThisWeek, 'This week', true)}
               ${stat(totalLessons, 'Total recorded', false)}
@@ -155,7 +230,7 @@ function buildEmail({ firstName, lessonsThisWeek, totalLessons, classes, hasProg
   </body>
 </html>`
 
-  const text = `${headline}\n\n${nudge}\n\nThis week: ${lessonsThisWeek} · Total recorded: ${totalLessons} · Classes: ${classes}\n\nRecord a lesson: ${recordUrl}\n\nUnsubscribe: ${unsubUrl}`
+  const text = `${headline}\n\n${nudge}\n${streak >= 2 ? `\n🔥 ${streak}-day recording streak — keep it going!\n` : ''}\nThis week: ${lessonsThisWeek} · Total recorded: ${totalLessons} · Classes: ${classes}\n\nRecord a lesson: ${recordUrl}\n\nUnsubscribe: ${unsubUrl}`
 
   return { subject, html, text }
 }
@@ -181,23 +256,38 @@ async function run() {
     }
 
     const base = db.collection('users').doc(uid)
-    const [weekAgg, totalAgg, progAgg, ttSnap] = await Promise.all([
-      base.collection('entries').where('date', '>=', cutoff).count().get(),
+    const [totalAgg, progAgg, ttSnap, recentSnap] = await Promise.all([
       base.collection('entries').count().get(),
       base.collection('programs').count().get(),
       base.collection('timetable').doc('main').get(),
+      base.collection('entries').where('date', '>=', isoDaysAgo(140)).get(),
     ])
 
-    const lessonsThisWeek = weekAgg.data().count
+    // Recent entries → this-week count (recorded only) + streak date sets.
+    const recorded = new Set()
+    const missed = new Set()
+    let lessonsThisWeek = 0
+    recentSnap.forEach((d) => {
+      const e = d.data()
+      if (!e.date) return
+      if (e.missed) {
+        missed.add(e.date)
+        return
+      }
+      recorded.add(e.date)
+      if (e.date >= cutoff) lessonsThisWeek++
+    })
+
     const totalLessons = totalAgg.data().count
     const hasProgram = progAgg.data().count > 0
     const classes = classCount(ttSnap.data())
+    const streak = computeStreak(recorded, missed, ttSnap.data())
 
     const firstName = (p.displayName || '').split(' ')[0] || 'there'
-    const { subject, html, text } = buildEmail({ firstName, lessonsThisWeek, totalLessons, classes, hasProgram })
+    const { subject, html, text } = buildEmail({ firstName, lessonsThisWeek, totalLessons, classes, hasProgram, streak })
 
     if (dryRun) {
-      console.log(`• ${email} — "${subject}" (week ${lessonsThisWeek}, total ${totalLessons}, classes ${classes})`)
+      console.log(`• ${email} — "${subject}" (week ${lessonsThisWeek}, total ${totalLessons}, classes ${classes}, streak ${streak})`)
       sent++
       if (TEST_EMAIL) break
       continue
