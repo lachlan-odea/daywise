@@ -34,10 +34,9 @@ jobs:
         run: node scripts/send-weekly-reminders.mjs
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
           EMAIL_FROM_NAME: daywise
-          SENDGRID_UNSUB_GROUP_ID: ${{ secrets.SENDGRID_UNSUB_GROUP_ID }}
           APP_URL: https://lachlan-odea.github.io/daywise
           DRY_RUN: ${{ inputs.dry_run && '1' || '' }}
           TEST_EMAIL: ${{ inputs.test_email }}

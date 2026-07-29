@@ -140,8 +140,8 @@ the model.
   **notification bell** (unread badge, per-user "mark as read", newest first).
 - **Weekly progress email** — a Friday-afternoon (AU) reminder emailing each teacher their
   week's stats (lessons this week, total recorded, classes) and a prompt to record. Runs as a
-  GitHub Actions cron job → Firebase Admin SDK → SendGrid (no server/Blaze). Opt-out via
-  **Settings → Notifications** (`emailReminders`) or the email's unsubscribe link (SendGrid group).
+  GitHub Actions cron job → Firebase Admin SDK → Resend (no server/Blaze). Opt-out via
+  **Settings → Notifications** (`emailReminders`) or the email's unsubscribe link (`List-Unsubscribe`).
   Setup steps in `EMAIL_REMINDERS_SETUP.md`.
 - **Hidden admin page** (`/app/admin`, in the profile menu) for allow-listed admins. Gated
   client-side (`ADMIN_EMAILS`) and enforced by Firestore rules. Two tabs:
@@ -211,6 +211,8 @@ the model.
 _Newest first. Each entry corresponds to work pushed to `main`._
 
 ### 2026-07-28
+- Weekly reminder email now sends via **Resend** (was SendGrid) using the Resend HTTP API; dropped
+  the `@sendgrid/mail` dependency. Secrets: `RESEND_API_KEY`, `EMAIL_FROM`.
 - Record Lesson: **Mark as missed** — a missed/cancelled lesson counts for coverage (doesn't break a
   Perfect Week) but isn't counted as a taught lesson in milestones, program progress or reports;
   shown as "Missed" in the diary.

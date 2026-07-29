@@ -7,30 +7,27 @@
  *
  * Required env:
  *   FIREBASE_SERVICE_ACCOUNT   JSON of a service-account key (Firestore read access)
- *   SENDGRID_API_KEY           SendGrid API key with Mail Send permission
- *   EMAIL_FROM                 verified sender address, e.g. hello@daywise.app
+ *   RESEND_API_KEY             Resend API key
+ *   EMAIL_FROM                 verified sender address on your Resend domain, e.g. hello@daywise.au
  * Optional env:
  *   EMAIL_FROM_NAME            sender display name (default "daywise")
- *   SENDGRID_UNSUB_GROUP_ID    SendGrid unsubscribe (ASM) group id — enables one-click unsubscribe
  *   APP_URL                    app base URL (default https://lachlan-odea.github.io/daywise)
  *   DRY_RUN                    "1" to log emails instead of sending
  *   TEST_EMAIL                 send every message to this address instead of the real users
  */
 import admin from 'firebase-admin'
-import sgMail from '@sendgrid/mail'
 
 const {
   FIREBASE_SERVICE_ACCOUNT,
-  SENDGRID_API_KEY,
+  RESEND_API_KEY,
   EMAIL_FROM,
   EMAIL_FROM_NAME = 'daywise',
-  SENDGRID_UNSUB_GROUP_ID,
   APP_URL = 'https://lachlan-odea.github.io/daywise',
   DRY_RUN,
   TEST_EMAIL,
 } = process.env
 
-const dryRun = DRY_RUN === '1' || !SENDGRID_API_KEY
+const dryRun = DRY_RUN === '1' || !RESEND_API_KEY
 
 if (!FIREBASE_SERVICE_ACCOUNT) {
   console.error('Missing FIREBASE_SERVICE_ACCOUNT. Aborting.')
@@ -43,7 +40,28 @@ if (!dryRun && !EMAIL_FROM) {
 
 admin.initializeApp({ credential: admin.credential.cert(JSON.parse(FIREBASE_SERVICE_ACCOUNT)) })
 const db = admin.firestore()
-if (!dryRun) sgMail.setApiKey(SENDGRID_API_KEY)
+
+const FROM = EMAIL_FROM_NAME ? `${EMAIL_FROM_NAME} <${EMAIL_FROM}>` : EMAIL_FROM
+const UNSUB_URL = `${APP_URL}/app/settings`
+
+/** Send one email via the Resend HTTP API. */
+async function sendEmail(to, subject, html, text) {
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      from: FROM,
+      to: [to],
+      subject,
+      html,
+      text,
+      headers: { 'List-Unsubscribe': `<${UNSUB_URL}>` },
+    }),
+  })
+  if (!res.ok) {
+    throw new Error(`Resend ${res.status}: ${await res.text()}`)
+  }
+}
 
 /** Numbered teaching periods (1, Period 1, P1, Lesson 1…) — not roll call/breaks. */
 const isTeachingPeriod = (label) => /^(period\s*|p\s*|lesson\s*)?\d+$/i.test((label || '').trim())
@@ -87,7 +105,7 @@ function buildEmail({ firstName, lessonsThisWeek, totalLessons, classes, hasProg
       ? `You haven’t recorded any lessons this week yet. A quick voice note after class is all it takes — daywise writes the evidence for you.`
       : `Keep the momentum going — record any lessons you haven’t captured yet while they’re fresh.`
 
-  const unsubUrl = SENDGRID_UNSUB_GROUP_ID ? '<%asm_group_unsubscribe_raw_url%>' : `${APP_URL}/app/settings`
+  const unsubUrl = UNSUB_URL
 
   const html = `<!doctype html><html><body style="margin:0;background:#f4f6fb;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#1e2a4a">
   <div style="max-width:520px;margin:0 auto;padding:24px">
@@ -170,21 +188,12 @@ async function run() {
       continue
     }
 
-    const msg = {
-      to: email,
-      from: { email: EMAIL_FROM, name: EMAIL_FROM_NAME },
-      subject,
-      html,
-      text,
-    }
-    if (SENDGRID_UNSUB_GROUP_ID) msg.asm = { groupId: Number(SENDGRID_UNSUB_GROUP_ID) }
-
     try {
-      await sgMail.send(msg)
+      await sendEmail(email, subject, html, text)
       sent++
       console.log(`✓ ${email}`)
     } catch (e) {
-      console.error(`✗ ${email}:`, e?.response?.body?.errors || e.message)
+      console.error(`✗ ${email}:`, e.message)
     }
     if (TEST_EMAIL) break
   }
