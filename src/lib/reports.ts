@@ -84,7 +84,7 @@ function activeTerm(tt: Timetable | null, now: Date) {
 }
 
 /** Calculate the longest streak of consecutive teaching days with entries. */
-function computeStreak(entries: LessonEntry[], tt: Timetable | null, now: Date): number {
+export function computeStreak(entries: LessonEntry[], tt: Timetable | null, now: Date): number {
   if (!tt || !tt.periods?.length) return 0
   const hasCalendar = (tt.terms ?? []).some((t) => t?.start && t?.end)
 
