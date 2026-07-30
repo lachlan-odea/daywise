@@ -5,6 +5,7 @@ import {
   Send,
   Loader2,
   Trash2,
+  Edit2,
   Eye,
   EyeOff,
   AlertCircle,
@@ -25,6 +26,7 @@ import { isAdmin } from '../lib/admin'
 import {
   subscribeAnnouncements,
   createAnnouncement,
+  updateAnnouncement,
   setAnnouncementActive,
   deleteAnnouncement,
   type Announcement,
@@ -120,6 +122,12 @@ export default function Admin() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [done, setDone] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editTitle, setEditTitle] = useState('')
+  const [editBody, setEditBody] = useState('')
+  const [editType, setEditType] = useState<AnnouncementType>('update')
+  const [editBusy, setEditBusy] = useState(false)
+  const [editError, setEditError] = useState('')
 
   const [tab, setTab] = useState<'notify' | 'usage'>('notify')
   const [usage, setUsage] = useState<UsageStats | null>(null)
@@ -169,6 +177,37 @@ export default function Admin() {
       setError(e instanceof Error ? e.message : 'Could not publish. Check your permissions.')
     } finally {
       setBusy(false)
+    }
+  }
+
+  const openEdit = (a: Announcement) => {
+    if (!a.id) return
+    setEditingId(a.id)
+    setEditTitle(a.title)
+    setEditBody(a.body)
+    setEditType(a.type)
+    setEditError('')
+  }
+
+  const saveEdit = async () => {
+    if (!editingId) return
+    if (!editTitle.trim() || !editBody.trim()) {
+      setEditError('Add a title and a message.')
+      return
+    }
+    setEditBusy(true)
+    setEditError('')
+    try {
+      await updateAnnouncement(editingId, {
+        title: editTitle.trim(),
+        body: editBody.trim(),
+        type: editType,
+      })
+      setEditingId(null)
+    } catch (e) {
+      setEditError(e instanceof Error ? e.message : 'Could not save. Check your permissions.')
+    } finally {
+      setEditBusy(false)
     }
   }
 
@@ -306,6 +345,13 @@ export default function Admin() {
                   title={a.active ? 'Hide from users' : 'Show to users'}
                 >
                   {a.active ? <Eye size={16} /> : <EyeOff size={16} />}
+                </button>
+                <button
+                  onClick={() => openEdit(a)}
+                  className="flex h-8 w-8 items-center justify-center rounded-full text-navy-400 hover:bg-navy-50"
+                  title="Edit"
+                >
+                  <Edit2 size={15} />
                 </button>
                 <button
                   onClick={() => remove(a)}
@@ -522,7 +568,7 @@ export default function Admin() {
                                 disabled={grantingId === b.id}
                                 className="shrink-0 rounded-full bg-teal-500 px-3 py-1.5 text-xs font-bold text-white hover:bg-teal-600 disabled:opacity-60"
                               >
-                                {grantingId === b.id ? <Loader2 size={13} className="animate-spin" /> : 'Grant'}
+                                {grantingId === b.id ? <Loader2 size={13} className="animate-spin" /> : "Grant"}
                               </button>
                             )}
                           </div>
@@ -541,6 +587,75 @@ export default function Admin() {
           </div>
         </div>
       )}
+
+      {editingId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-navy-950/50" onClick={() => setEditingId(null)} />
+          <div className="relative w-full max-w-lg rounded-3xl bg-white shadow-card">
+            <div className="flex items-start justify-between gap-3 border-b border-navy-100 p-5">
+              <h3 className="text-lg font-bold text-navy-900">Edit announcement</h3>
+              <button
+                onClick={() => setEditingId(null)}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-navy-400 hover:bg-navy-50"
+                aria-label="Close"
+              >
+                X
+              </button>
+            </div>
+            <div className="space-y-4 p-5">
+              <label className="block">
+                <span className="mb-1.5 block text-sm font-semibold text-navy-800">Title</span>
+                <input
+                  className={inputCls}
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  placeholder="e.g. New: planning notes on your diary"
+                  maxLength={80}
+                />
+              </label>
+              <div className="grid gap-4 sm:grid-cols-[1fr_200px]">
+                <label className="block">
+                  <span className="mb-1.5 block text-sm font-semibold text-navy-800">Message</span>
+                  <textarea
+                    className={inputCls + " resize-y"}
+                    value={editBody}
+                    onChange={(e) => setEditBody(e.target.value)}
+                    rows={4}
+                    placeholder="What would you like your teachers to know?"
+                    maxLength={800}
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-1.5 block text-sm font-semibold text-navy-800">Type</span>
+                  <select className={inputCls} value={editType} onChange={(e) => setEditType(e.target.value as AnnouncementType)}>
+                    {TYPES.map((t) => (
+                      <option key={t.value} value={t.value}>
+                        {t.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              {editError && (
+                <div className="flex items-start gap-2 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
+                  <AlertCircle size={16} className="mt-0.5 shrink-0" /> {editError}
+                </div>
+              )}
+            </div>
+            <div className="border-t border-navy-100 p-4 text-right">
+              <div className="flex items-center justify-end gap-3">
+                <button onClick={() => setEditingId(null)} className="rounded-full border border-navy-200 px-4 py-2 text-sm font-semibold text-navy-600 hover:bg-navy-50">
+                  Cancel
+                </button>
+                <button onClick={saveEdit} disabled={editBusy} className="btn-primary text-sm">
+                  {editBusy ? <Loader2 size={16} className="animate-spin" /> : <Check size={15} />} Save changes
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </main>
   )
 }

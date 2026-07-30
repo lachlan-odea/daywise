@@ -5,8 +5,8 @@ import {
   BookOpen,
   CalendarDays,
   ClipboardList,
-  Clock,
-  Users,
+  Flame,
+  Trophy,
   Target,
   TrendingUp,
   Layers,
@@ -40,7 +40,6 @@ const fmtDate = (iso: string | null) => {
   if (!y) return iso
   return new Date(y, (m || 1) - 1, d || 1).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
 }
-const fmtTime = (d: Date | null) => (d ? d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) : '')
 
 const FOCUS_META: Record<FocusSeverity, { icon: LucideIcon; color: string }> = {
   warning: { icon: AlertTriangle, color: 'text-amber-500' },
@@ -109,14 +108,8 @@ export default function Reports() {
     { label: 'Programs Active', value: String(k.programsActive), sub: ov.periodLabel, icon: BookOpen, tint: 'bg-indigo-50 text-indigo-600' },
     { label: 'Lessons This Week', value: String(k.lessonsThisWeek), sub: 'Across all classes', icon: TrendingUp, tint: 'bg-teal-50 text-teal-600' },
     { label: 'Outcomes Covered', value: String(k.outcomesCovered), sub: 'Across all programs', icon: Target, tint: 'bg-amber-50 text-amber-600' },
-    { label: 'Classes Taught', value: String(k.classesTaught), sub: ov.periodLabel, icon: Users, tint: 'bg-rose-50 text-rose-600' },
-    {
-      label: 'Last Recorded',
-      value: k.lastRecorded ? (isToday(k.lastRecorded, now) ? 'Today' : fmtDate(toISO(k.lastRecorded))) : '—',
-      sub: k.lastRecorded ? fmtTime(k.lastRecorded) : 'No entries yet',
-      icon: Clock,
-      tint: 'bg-navy-50 text-navy-600',
-    },
+    { label: 'Teaching Streak', value: String(k.streak), sub: 'Consecutive days', icon: Flame, tint: 'bg-orange-50 text-orange-600' },
+    { label: 'Achievement Progress', value: `${k.achievementProgress}%`, sub: 'Badges earned', icon: Trophy, tint: 'bg-amber-50 text-amber-600' },
   ]
 
   const maxBar = Math.max(1, ...ov.timeline.map((t) => t.count))
@@ -171,20 +164,38 @@ export default function Reports() {
 
       {/* KPI cards */}
       <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {cards.map((c) => (
-          <div key={c.label} className="rounded-2xl border border-navy-100 bg-white p-4">
+        {cards.map((c) => {
+          const isAchievementCard = c.label === 'Achievement Progress'
+          const cardContent = (
             <div className="flex items-start justify-between">
               <p className="text-xs font-semibold text-navy-400">{c.label}</p>
               <span className={`flex h-8 w-8 items-center justify-center rounded-lg ${c.tint}`}>
                 <c.icon size={16} />
               </span>
             </div>
-            <p className={`mt-2 text-3xl font-extrabold tracking-tight ${c.value === 'Today' ? 'text-teal-600' : 'text-navy-900'}`}>
-              {c.value}
-            </p>
-            <p className="mt-0.5 text-xs text-navy-400">{c.sub}</p>
-          </div>
-        ))}
+          )
+          return isAchievementCard ? (
+            <Link
+              key={c.label}
+              to="/app/achievements"
+              className="rounded-2xl border border-navy-100 bg-white p-4 transition-colors hover:bg-navy-50"
+            >
+              {cardContent}
+              <p className={`mt-2 text-3xl font-extrabold tracking-tight ${c.value === 'Today' ? 'text-teal-600' : 'text-navy-900'}`}>
+                {c.value}
+              </p>
+              <p className="mt-0.5 text-xs text-navy-400">{c.sub}</p>
+            </Link>
+          ) : (
+            <div key={c.label} className="rounded-2xl border border-navy-100 bg-white p-4">
+              {cardContent}
+              <p className={`mt-2 text-3xl font-extrabold tracking-tight ${c.value === 'Today' ? 'text-teal-600' : 'text-navy-900'}`}>
+                {c.value}
+              </p>
+              <p className="mt-0.5 text-xs text-navy-400">{c.sub}</p>
+            </div>
+          )
+        })}
       </div>
 
       <div className="mt-5 grid gap-5 lg:grid-cols-3">

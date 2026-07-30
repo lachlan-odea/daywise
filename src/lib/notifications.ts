@@ -1,6 +1,7 @@
 import {
   addDoc,
   collection,
+  deleteDoc,
   doc,
   onSnapshot,
   orderBy,
@@ -43,4 +44,9 @@ export async function addNotification(uid: string, n: Omit<UserNotification, 'id
 export async function markNotificationRead(uid: string, id: string) {
   if (!db) return
   await updateDoc(doc(db, 'users', uid, 'notifications', id), { read: true })
+}
+
+export async function deleteNotification(uid: string, id: string) {
+  if (!db) return
+  await deleteDoc(doc(db, 'users', uid, 'notifications', id))
 }

@@ -45,6 +45,11 @@ export async function createAnnouncement(a: Omit<Announcement, 'id' | 'createdAt
   await addDoc(collection(db, 'announcements'), { ...a, createdAt: serverTimestamp() })
 }
 
+export async function updateAnnouncement(id: string, updates: Partial<Omit<Announcement, 'id' | 'createdAt' | 'createdByEmail'>>) {
+  if (!db) return
+  await updateDoc(doc(db, 'announcements', id), updates)
+}
+
 export async function setAnnouncementActive(id: string, active: boolean) {
   if (!db) return
   await updateDoc(doc(db, 'announcements', id), { active })

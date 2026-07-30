@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Bell, Info, Sparkles, Wrench, Trophy, Check, type LucideIcon } from 'lucide-react'
+import { Bell, Info, Sparkles, Wrench, Trophy, Check, X, type LucideIcon } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import {
   subscribeAnnouncements,
@@ -12,6 +12,7 @@ import {
 import {
   subscribeNotifications,
   markNotificationRead,
+  deleteNotification,
   type UserNotification,
 } from '../lib/notifications'
 
@@ -39,6 +40,7 @@ interface Entry {
   sort: number
   unread: boolean
   onRead: () => void
+  onDismiss: () => void
 }
 
 export default function NotificationsBell() {
@@ -84,6 +86,7 @@ export default function NotificationsBell() {
         sort: millis(a.createdAt),
         unread: !dismissed[id],
         onRead: () => user && dismissAnnouncement(user.uid, id),
+        onDismiss: () => user && dismissAnnouncement(user.uid, id),
       })
     }
     for (const n of notifs) {
@@ -100,6 +103,7 @@ export default function NotificationsBell() {
         sort: millis(n.createdAt),
         unread: !n.read,
         onRead: () => user && markNotificationRead(user.uid, id),
+        onDismiss: () => user && deleteNotification(user.uid, id),
       })
     }
     return list.sort((x, y) => y.sort - x.sort)
@@ -143,14 +147,23 @@ export default function NotificationsBell() {
               entries.map((e) => {
                 const Icon = e.icon
                 return (
-                  <div key={e.key} className={`flex gap-3 border-b border-navy-50 px-4 py-3 ${e.unread ? 'bg-teal-50/40' : ''}`}>
+                  <div key={e.key} className={`relative flex gap-3 border-b border-navy-50 px-4 py-3 ${e.unread ? 'bg-teal-50/40' : ''}`}>
                     <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${e.bg} ${e.color}`}>
                       <Icon size={16} />
                     </span>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-2">
                         <p className="text-sm font-bold text-navy-900">{e.title}</p>
-                        <span className="shrink-0 text-[11px] text-navy-300">{e.when}</span>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <span className="text-[11px] text-navy-300">{e.when}</span>
+                          <button
+                            onClick={e.onDismiss}
+                            className="flex h-5 w-5 items-center justify-center rounded text-navy-400 hover:bg-navy-100 hover:text-navy-600"
+                            aria-label="Dismiss notification"
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
                       </div>
                       <p className="mt-0.5 whitespace-pre-wrap text-sm text-navy-600">{e.body}</p>
                       {e.unread && (
@@ -162,7 +175,7 @@ export default function NotificationsBell() {
                         </button>
                       )}
                     </div>
-                    {e.unread && <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-teal-500" />}
+                    {e.unread && <span className="absolute right-6 top-4 h-2 w-2 rounded-full bg-teal-500" />}
                   </div>
                 )
               })

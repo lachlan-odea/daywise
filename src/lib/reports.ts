@@ -1,6 +1,8 @@
 import type { LessonEntry } from './entries'
 import type { Lesson, Program } from './programs'
-import { currentTermIndex, mondayOf, type Timetable } from './timetable'
+import { currentTermIndex, mondayOf, type Timetable, cellKey, currentWeek } from './timetable'
+import { BADGES, computeStats } from './achievements'
+import { classKey } from './classPrograms'
 
 export type ReportPeriod = 'term' | 'ytd'
 
@@ -11,8 +13,8 @@ export interface Kpis {
   programsActive: number
   lessonsThisWeek: number
   outcomesCovered: number
-  classesTaught: number
-  lastRecorded: Date | null
+  streak: number
+  achievementProgress: number
   termNumber: number | null
 }
 
@@ -61,6 +63,7 @@ const toISO = (d: Date) =>
 
 const daysBetween = (a: Date, b: Date) => Math.round((b.getTime() - a.getTime()) / 86_400_000)
 const classOf = (e: LessonEntry) => `${(e.subject || '').trim().toLowerCase()}|${(e.className || '').trim().toLowerCase()}`
+const isTeachingPeriod = (label: string) => /^(period\s*|p\s*|lesson\s*)?\d+$/i.test((label || '').trim())
 
 /** Resolve the current (or most recent) term's date range and number. */
 function activeTerm(tt: Timetable | null, now: Date) {
@@ -78,6 +81,61 @@ function activeTerm(tt: Timetable | null, now: Date) {
   }
   if (idx < 0 || !terms[idx]?.start || !terms[idx]?.end) return null
   return { index: idx, number: idx + 1, start: terms[idx].start, end: terms[idx].end }
+}
+
+/** Calculate the longest streak of consecutive teaching days with entries. */
+function computeStreak(entries: LessonEntry[], tt: Timetable | null, now: Date): number {
+  if (!tt || !tt.periods?.length) return 0
+  const hasCalendar = (tt.terms ?? []).some((t) => t?.start && t?.end)
+
+  const recordedByDate = new Map<string, Set<string>>()
+  for (const e of entries) {
+    if (!e.date || e.missed) continue
+    if (!recordedByDate.has(e.date)) recordedByDate.set(e.date, new Set())
+    recordedByDate.get(e.date)!.add(classKey(e.subject, e.className))
+  }
+
+  const teachingIds = new Set(tt.periods.filter((p) => isTeachingPeriod(p.label)).map((p) => p.id))
+  const scheduledFor = (date: Date): string[] => {
+    const wd = (date.getDay() + 6) % 7
+    if (wd > 4) return []
+    if (hasCalendar && currentTermIndex(tt, date) < 0) return []
+    const week = currentWeek(tt, date)
+    const keys: string[] = []
+    for (const p of tt.periods) {
+      if (!teachingIds.has(p.id)) continue
+      const cell = tt.cells[cellKey(week, p.id, wd)]
+      if (cell && cell.kind !== 'meeting') keys.push(classKey(cell.subject, cell.className))
+    }
+    return keys
+  }
+
+  const today = new Date()
+  const dates = entries.map((e) => e.date).filter(Boolean).sort()
+  const firstStart = (tt.terms ?? []).map((t) => t?.start).filter(Boolean).sort()[0]
+  const earliest = [dates[0], firstStart].filter(Boolean).sort()[0]
+  if (!earliest) return 0
+  let cursor = new Date(`${earliest}T00:00:00`)
+  const floor = new Date(today.getFullYear() - 2, today.getMonth(), today.getDate())
+  if (cursor < floor) cursor = floor
+
+  type Day = { iso: string; hasEntry: boolean }
+  const days: Day[] = []
+  for (let d = new Date(cursor); d <= today; d.setDate(d.getDate() + 1)) {
+    const sched = scheduledFor(d)
+    if (!sched.length) continue
+    const rec = recordedByDate.get(toISO(d)) ?? new Set<string>()
+    days.push({ iso: toISO(d), hasEntry: rec.size > 0 })
+  }
+  if (!days.length) return 0
+
+  let streak = 0
+  let run = 0
+  for (const d of days) {
+    run = d.hasEntry ? run + 1 : 0
+    if (run > streak) streak = run
+  }
+  return streak
 }
 
 /** Build the full Teaching Overview from the teacher's data. Pure — no I/O. */
@@ -132,14 +190,6 @@ export function buildOverview(params: {
       e.outcomes?.length
     )
 
-  // KPI: last recorded (across all entries, excluding missed)
-  let lastRecorded: Date | null = null
-  for (const e of entries) {
-    if (e.missed) continue
-    const t = e.createdAt?.toDate?.() ?? (e.date ? new Date(e.date) : null)
-    if (t && (!lastRecorded || t > lastRecorded)) lastRecorded = t
-  }
-
   // Programs active this period
   const programsActive =
     period === 'term' && term
@@ -148,6 +198,23 @@ export function buildOverview(params: {
 
   const daysRemaining = term ? Math.max(0, daysBetween(now, new Date(`${term.end}T00:00:00`))) : null
 
+  // KPI: streak (current recording streak)
+  const streak = computeStreak(entries, timetable, now)
+
+  // KPI: achievement progress (earned badges / total badges)
+  const taught = entries.filter((e) => !e.missed)
+  const programsStarted = programs.filter((p) => taught.some((e) => e.programId === p.program.id)).length
+  const stats = computeStats({
+    entries: taught,
+    programs,
+    timetable,
+    feedbackCount: 0,
+    events: {},
+    perpetual: false,
+  })
+  const earnedBadges = BADGES.filter((b) => b.earned(stats)).length
+  const achievementProgress = BADGES.length > 0 ? Math.round((earnedBadges / BADGES.length) * 100) : 0
+
   const kpis: Kpis = {
     lessonsTaught: inPeriod.length,
     daysRemaining,
@@ -155,8 +222,8 @@ export function buildOverview(params: {
     programsActive,
     lessonsThisWeek,
     outcomesCovered: outcomeSet.size,
-    classesTaught: classSet.size,
-    lastRecorded,
+    streak,
+    achievementProgress,
     termNumber: term?.number ?? null,
   }
 
