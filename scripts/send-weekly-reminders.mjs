@@ -289,8 +289,10 @@ async function run() {
   const cutoff = isoDaysAgo(7)
   const usersSnap = await db.collection('users').get()
   let sent = 0
+  let failed = 0
   let skipped = 0
   let unverified = 0
+  let lastError = ''
 
   for (const doc of usersSnap.docs) {
     const p = doc.data()
@@ -380,16 +382,34 @@ async function run() {
       sent++
       console.log(`✓ ${ref}`)
     } catch (e) {
+      failed++
+      lastError = e.message
       console.error(`✗ ${ref}:`, e.message)
     }
     if (TEST_EMAIL) break
   }
 
   console.log(
-    `Done. Sent/queued: ${sent}, skipped: ${skipped}, unverified recipients: ${unverified}${
-      requireVerified ? ' (skipped — strict mode)' : ' (still sent — set REQUIRE_VERIFIED_EMAIL=1 to skip)'
+    `Done. Sent/queued: ${sent}, failed: ${failed}, skipped: ${skipped}, unverified recipients: ${unverified}${
+      requireVerified ? ' (skipped — strict mode)' : ' (not skipped — set REQUIRE_VERIFIED_EMAIL=1 to skip)'
     }.`,
   )
+
+  // Exit non-zero when nothing got through despite having recipients. Otherwise a
+  // systemic fault — expired API key, unverified sending domain, Resend outage —
+  // produces a green CI run and reminders stop without anyone noticing. Partial
+  // failures are surfaced loudly but don't fail the job, since one hard-bouncing
+  // address shouldn't block everyone else's reminder.
+  if (failed > 0 && sent === 0) {
+    console.error(
+      `\nEvery send failed (${failed}/${failed}). This looks like a configuration problem, ` +
+        `not bad addresses.\nLast error: ${lastError}`,
+    )
+    process.exit(1)
+  }
+  if (failed > 0) {
+    console.warn(`\nWARNING: ${failed} of ${failed + sent} sends failed. Last error: ${lastError}`)
+  }
 }
 
 run().catch((e) => {

@@ -86,7 +86,7 @@ export function buildOnboarding(params: {
     {
       id: 'record',
       label: 'Record your first lesson',
-      detail: 'Talk for a minute after class — daywise writes the evidence.',
+      detail: 'A quick voice note is all it takes — daywise writes the evidence.',
       done: hasEntry,
       href: '/app/record',
       cta: 'Record',
