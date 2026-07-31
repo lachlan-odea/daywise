@@ -2,20 +2,102 @@ rules_version = '2';
 
 // daywise Firestore security rules.
 // Each user can only read and write their own document tree under /users/{uid},
-// including all subcollections (timetable, and future entries/programs/reports).
+// including all subcollections (timetable, entries, programs, planning, meta, state).
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Admins may read any user's data (for the admin usage dashboard); users still
-    // only write their own tree.
-    // Keep this admin list in sync with ADMIN_EMAILS in src/lib/admin.ts.
+
+    // ---------------------------------------------------------------------
+    // Admin identity
+    // ---------------------------------------------------------------------
+    // Admins may READ any user's data (for the admin usage dashboard); users still
+    // only ever write their own tree.
+    //
+    // SECURITY: admin is keyed on UID, deliberately NOT on the email claim.
+    //
+    // An email allow-list was exploitable: the addresses ship in the public JS
+    // bundle, signup is open, and Firebase populates token.email for password
+    // accounts whether or not the address is verified — so a stranger could register
+    // an allow-listed address and inherit read access to every user's data. It also
+    // meant trusting an OIDC `email` claim, which a Microsoft tenant admin can set.
+    //
+    // A UID is assigned by Firebase, is unguessable, and cannot be claimed by
+    // registering any address, so none of the above applies and no email
+    // verification is needed to make it safe.
+    //
+    // These correspond to the two accounts in ADMIN_EMAILS (src/lib/admin.ts).
+    // Re-run `node scripts/admin-accounts.mjs` to re-print them if they change.
+    // NOTE: a UID is per-account. Deleting and recreating an admin account issues a
+    // NEW UID, which must be updated here and in src/lib/admin.ts or admin access
+    // will be lost.
     function isAdmin() {
       return request.auth != null
-        && request.auth.token.email in ['lachlan.odea@outlook.com', 'admin@projectdaybook.com', 'james.mcclelland7@det.nsw.edu.au', 'buddy@projectdaybook.com'];
+        && request.auth.uid in [
+          'kaOBMwgr7CTVyJSH3YAdfycWctW2',
+          '1k4WK8VOojgUpH9IFNAG9CGAWoj2'
+        ];
     }
 
-    match /users/{userId}/{document=**} {
-      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
-      allow write: if request.auth != null && request.auth.uid == userId;
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    // Keys the client must never be able to change on its own profile document.
+    // `plan` gates paid entitlements (src/lib/entitlements.ts) and is read straight
+    // back by the client, so a self-write would be a free upgrade.
+    function touches(keys) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasAny(keys);
+    }
+
+    // `email` is consumed by the privileged weekly mailer (scripts/send-weekly-reminders.mjs),
+    // which runs with a service account and bypasses these rules. Pinning it to the
+    // verified auth token stops a user pointing daywise's verified sending domain at
+    // a third party.
+    function emailPinnedToToken() {
+      return !touches(['email'])
+        || request.resource.data.email == request.auth.token.email;
+    }
+
+    // A loose sanity bound only. The real defence against display-name payloads is
+    // in the mailer, which charset-clamps the name before putting it in an email.
+    // null is explicitly allowed: a password signup with no name given has a null
+    // displayName, and rejecting it here would break login for those accounts.
+    function displayNameSane() {
+      return !touches(['displayName'])
+        || request.resource.data.displayName == null
+        || (request.resource.data.displayName is string
+            && request.resource.data.displayName.size() <= 200);
+    }
+
+    // ---------------------------------------------------------------------
+    // Profile document — /users/{userId}
+    // ---------------------------------------------------------------------
+    // NOTE: this is deliberately a SEPARATE match from the subcollection rule below.
+    // Firestore unions (ORs) all matching rules, so a broad recursive wildcard that
+    // also covered this document would defeat the field-level validation here.
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+
+      allow create: if isOwner(userId)
+        && request.resource.data.email == request.auth.token.email
+        && (!('plan' in request.resource.data) || request.resource.data.plan == 'starter');
+
+      allow update: if isOwner(userId)
+        && !touches(['plan', 'createdAt'])
+        && emailPinnedToToken()
+        && displayNameSane();
+
+      allow delete: if isOwner(userId);
+    }
+
+    // ---------------------------------------------------------------------
+    // Everything beneath the profile — entries, programs, timetable, planning,
+    // meta, state, notifications, feedback (and any future subcollection).
+    // ---------------------------------------------------------------------
+    // The recursive wildcard starts at the subcollection segment so it can never
+    // match /users/{userId} itself.
+    match /users/{userId}/{collection}/{document=**} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow write: if isOwner(userId);
     }
 
     // Admins may write this one doc in any user's tree (to grant achievement badges).
@@ -24,9 +106,15 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // Broadcast announcements: any signed-in user can read; only admins can write.
+    // ---------------------------------------------------------------------
+    // Broadcast announcements
+    // ---------------------------------------------------------------------
+    // Signed-in users may only read PUBLISHED announcements; admins see drafts and
+    // retracted ones too. Clients reading as a non-admin must constrain the query
+    // with where('active','==',true) — see subscribeActiveAnnouncements() in
+    // src/lib/announcements.ts — otherwise Firestore rejects the list.
     match /announcements/{id} {
-      allow read: if request.auth != null;
+      allow read: if request.auth != null && (resource.data.active == true || isAdmin());
       allow write: if isAdmin();
     }
   }
