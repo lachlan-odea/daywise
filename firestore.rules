@@ -106,44 +106,13 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // ---------------------------------------------------------------------
-    // Coming-soon waitlist
-    // ---------------------------------------------------------------------
-    // Written by the static coming-soon page (coming-soon/index.html) via the
-    // Firestore REST API. That page is unauthenticated, so this is the one place in
-    // the database that accepts a write with request.auth == null — locked down as
-    // far as rules allow:
-    //
-    //   * create only — entries can never be edited, and only an admin can delete.
-    //   * NOT readable by the public. Without this, a harvestable list of teacher
-    //     email addresses would be exposed to anyone with the project id.
-    //   * the document shape is pinned exactly, so the collection can't be used as
-    //     free storage for arbitrary data.
-    //
-    // What rules CANNOT do here is stop volume abuse — a bot can still burn write
-    // quota. The page carries a honeypot field to deter the naive case; if this ever
-    // gets hit properly, put it behind App Check or a serverless proxy.
-    function validWaitlistEntry() {
-      let d = request.resource.data;
-      return d.keys().hasOnly(['email', 'source', 'createdAt'])
-        && d.keys().hasAll(['email', 'source', 'createdAt'])
-        && d.email is string
-        && d.email.size() >= 5
-        && d.email.size() <= 200
-        && d.email.matches('^[^@ ]+@[^@ ]+[.][^@ ]+$')
-        && d.source is string
-        && d.source.size() <= 40
-        && d.createdAt is timestamp
-        // Bound to the request so entries can't be back- or forward-dated.
-        && d.createdAt >= request.time - duration.value(10, 'm')
-        && d.createdAt <= request.time + duration.value(10, 'm');
-    }
-
-    match /waitlist/{id} {
-      allow create: if validWaitlistEntry();
-      allow read, delete: if isAdmin();
-      allow update: if false;
-    }
+    // NOTE: there is deliberately no /waitlist collection here. The coming-soon page
+    // is static and unauthenticated, and App Check is ENFORCED for Cloud Firestore —
+    // so requests without an App Check token are rejected before rules are evaluated,
+    // regardless of what any rule permits. Rather than load the App Check SDK and
+    // reCAPTCHA onto a landing page (or weaken App Check for the whole project), that
+    // page posts to a Google Apps Script endpoint instead. See
+    // scripts/waitlist-apps-script.gs.
 
     // ---------------------------------------------------------------------
     // Broadcast announcements

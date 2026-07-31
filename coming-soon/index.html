@@ -351,24 +351,20 @@
     <script>
       /* Waitlist capture.
        *
-       * Writes straight to Firestore over its REST API, so this page stays a single
-       * self-contained file with no SDK. Both values below are Firebase's public web
-       * identifiers — the same pair already shipped in the main app's JS bundle. They
-       * are NOT secrets: access is controlled by the /waitlist rules in
-       * firestore.rules, which allow create-only and no public read.
+       * Posts to a Google Apps Script web app, which appends the signup to a Sheet.
+       * See scripts/waitlist-apps-script.gs in the daywise repo for the server side
+       * and its deployment steps.
        *
-       * Deliberately not mode:'no-cors' (as the previous Apps Script version was).
-       * Firestore sends CORS headers, so the response is readable and a rejected
-       * write can actually be reported instead of silently showing success.
+       * Not Firestore: App Check is enforced for Cloud Firestore, so an anonymous
+       * static page cannot write to it — such requests are rejected before security
+       * rules are consulted. Posting here keeps this page a single dependency-free
+       * file and leaves App Check protecting real user data.
+       *
+       * Sent as text/plain so the browser treats it as a "simple" request and skips
+       * the CORS preflight, which Apps Script cannot answer. The response IS read, so
+       * a failure is reported rather than silently celebrated.
        */
-      var FIREBASE_PROJECT_ID = 'daybook-f5bab';
-      var FIREBASE_API_KEY = 'AIzaSyAjkdSBV71wMYOVidQCrtE1L4H6x877QFc';
-
-      var WAITLIST_URL =
-        'https://firestore.googleapis.com/v1/projects/' +
-        FIREBASE_PROJECT_ID +
-        '/databases/(default)/documents/waitlist?key=' +
-        FIREBASE_API_KEY;
+      var WAITLIST_ENDPOINT = ''; // <-- paste the Apps Script /exec URL here
 
       document.getElementById('year').textContent = new Date().getFullYear();
 
@@ -405,32 +401,43 @@
         button.textContent = 'Adding…';
 
         // Honeypot tripped — almost certainly a bot. Show the same success state so
-        // it gets no signal, but write nothing.
+        // it gets no signal, but record nothing.
         if (honeypot && honeypot.value) {
           finish();
           return;
         }
 
-        fetch(WAITLIST_URL, {
+        // No endpoint configured. This MUST surface an error: an earlier version
+        // short-circuited to the success screen here, so every signup was discarded
+        // while the visitor was told they were on the list.
+        if (!WAITLIST_ENDPOINT) {
+          showError('Sign-ups aren’t quite ready — please try again shortly.');
+          return;
+        }
+
+        // No timestamp is sent: the Apps Script stamps its own server-side, so a wrong
+        // or falsified device clock can't affect the record.
+        fetch(WAITLIST_ENDPOINT, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify({
-            fields: {
-              email: { stringValue: email },
-              source: { stringValue: 'coming-soon' },
-              createdAt: { timestampValue: new Date().toISOString() },
-            },
+            email: email,
+            source: 'coming-soon',
+            userAgent: navigator.userAgent,
           }),
         })
           .then(function (res) {
-            if (res.ok) {
+            if (!res.ok) throw new Error('http ' + res.status);
+            return res.json();
+          })
+          .then(function (data) {
+            // A duplicate is still a success from the visitor's point of view — they
+            // are on the list, just already.
+            if (data && data.ok) {
               finish();
-              return;
+            } else {
+              showError('Sorry, we couldn’t add you just then — please try again.');
             }
-            // 400/403 here means the rules rejected the write or the config is wrong.
-            // Never show success in that case — the whole point is not to tell someone
-            // they're on a list they aren't on.
-            showError('Sorry, we couldn’t add you just then — please try again.');
           })
           .catch(function () {
             showError('Something went wrong — please check your connection and try again.');
