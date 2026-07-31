@@ -27,6 +27,12 @@ export interface UserProfile {
   plan?: Plan
   /** Weekly progress/reminder email opt-in. Undefined is treated as opted-in. */
   emailReminders?: boolean
+  /**
+   * Onboarding state. Only these two flags are stored — each setup step's
+   * done-state is derived from real data instead (see src/lib/onboarding.ts).
+   */
+  onboardingWelcomeSeen?: boolean
+  onboardingDismissed?: boolean
   createdAt?: Timestamp
   lastLoginAt?: Timestamp
 }
