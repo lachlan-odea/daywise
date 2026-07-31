@@ -14,6 +14,15 @@ export interface FeedbackPayload {
   message: string
 }
 
+/**
+ * Force a value to be treated as text by Google Sheets / Excel.
+ *
+ * The Apps Script endpoint is public and unauthenticated (its URL ships in the JS
+ * bundle), so anyone can post rows. A leading =, +, -, @, tab or CR would otherwise
+ * be evaluated as a formula when the sheet is opened.
+ */
+const sheetSafe = (v: string) => (/^[=+\-@\t\r]/.test(v) ? `'${v}` : v)
+
 export async function submitFeedback(p: FeedbackPayload) {
   const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : ''
 
@@ -30,14 +39,14 @@ export async function submitFeedback(p: FeedbackPayload) {
   if (ENDPOINT) {
     const body = new URLSearchParams({
       timestamp: new Date().toISOString(),
-      name: p.name,
-      email: p.email,
+      name: sheetSafe(p.name),
+      email: sheetSafe(p.email),
       uid: p.uid,
-      page: p.page,
-      module: p.module,
-      type: p.type,
-      message: p.message,
-      userAgent,
+      page: sheetSafe(p.page),
+      module: sheetSafe(p.module),
+      type: sheetSafe(p.type),
+      message: sheetSafe(p.message),
+      userAgent: sheetSafe(userAgent),
     })
     // Apps Script web apps don't send CORS headers; no-cors makes a simple,
     // preflight-free request. The response is opaque but the row is written.

@@ -25,6 +25,8 @@ jobs:
         with:
           # Full history so the build can derive the beta version from commit dates.
           fetch-depth: 0
+          # Don't leave GITHUB_TOKEN in .git/config for install scripts to read.
+          persist-credentials: false
 
       - name: Setup Node
         uses: actions/setup-node@v4

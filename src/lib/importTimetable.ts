@@ -1,4 +1,5 @@
 import { assignColors, cellKey, defaultTimetable, newId, type ClassCell, type Period, type Timetable } from './timetable'
+import { assertSafeUpload } from './uploadGuard'
 
 export type SourceKind = 'excel' | 'word' | 'pdf'
 
@@ -252,6 +253,7 @@ function clusterToGrid(items: { x: number; y: number; str: string }[]): string[]
 }
 
 export async function extractGrid(file: File): Promise<ExtractResult> {
+  await assertSafeUpload(file)
   const name = file.name.toLowerCase()
   if (name.endsWith('.xlsx') || name.endsWith('.xls') || name.endsWith('.csv')) {
     return { sources: await fromExcel(file), kind: 'excel' }

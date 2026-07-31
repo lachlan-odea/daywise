@@ -85,7 +85,11 @@ export async function deleteAllUserData(uid: string) {
   await deleteRefs(programs.docs.map((d) => d.ref))
 
   // Flat per-user subcollections.
-  for (const c of ['entries', 'feedback', 'notifications', 'planning', 'timetable', 'meta']) {
+  // IMPORTANT: every new per-user subcollection must be added here — Firestore does
+  // not cascade deletes, so anything missing survives as orphaned data under a
+  // deleted parent and quietly breaks the "delete all associated data" promise.
+  // ('state' holds announcement dismissals — see src/lib/announcements.ts.)
+  for (const c of ['entries', 'feedback', 'notifications', 'planning', 'timetable', 'meta', 'state']) {
     const snap = await getDocs(collection(database, 'users', uid, c))
     await deleteRefs(snap.docs.map((d) => d.ref))
   }

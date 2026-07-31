@@ -51,7 +51,7 @@ const PROGRESS_COLOR = (p: number, complete: boolean) =>
   complete ? 'bg-emerald-500' : p >= 66 ? 'bg-teal-500' : p >= 40 ? 'bg-amber-500' : 'bg-rose-500'
 
 export default function Reports() {
-  const { user, effectiveUid } = useAuth()
+  const { user, effectiveUid, impersonating } = useAuth()
   const [entries, setEntries] = useState<LessonEntry[] | null>(null)
   const [programs, setPrograms] = useState<LoadedProgram[] | null>(null)
   const [tt, setTt] = useState<Timetable | null>(null)
@@ -64,9 +64,11 @@ export default function Reports() {
   }, [user])
 
   // Visiting this page unlocks the "Data Explorer" achievement.
+  // Skipped while impersonating: admin "view as" must not award achievements to the
+  // teacher being viewed, which would also suppress their own badge toast later.
   useEffect(() => {
-    if (user) markAchievementEvent(effectiveUid, 'reportsVisited').catch(() => {})
-  }, [user])
+    if (user && !impersonating) markAchievementEvent(effectiveUid, 'reportsVisited').catch(() => {})
+  }, [user, impersonating])
 
   useEffect(() => {
     if (!user) return
@@ -119,17 +121,17 @@ export default function Reports() {
     const endISO = period === 'term' && k.termNumber ? termEndISO(tt, now) : toISO(now)
     const rows = (entries ?? []).filter((e) => e.date >= startISO && e.date <= endISO)
     downloadCsv(`daywise-evidence-register-${period}.csv`, evidenceRegisterCsv(rows))
-    if (user) {
+    if (user && !impersonating) {
       markAchievementEvent(effectiveUid, 'evidenceRegister').catch(() => {})
       markAchievementEvent(effectiveUid, 'reportGenerated').catch(() => {})
     }
   }
   const runProgramReport = () => {
     downloadCsv(`daywise-program-report-${period}.csv`, programReportCsv(ov.programs))
-    if (user) markAchievementEvent(effectiveUid, 'reportGenerated').catch(() => {})
+    if (user && !impersonating) markAchievementEvent(effectiveUid, 'reportGenerated').catch(() => {})
   }
   const runTermSummary = () => {
-    if (user) markAchievementEvent(effectiveUid, 'reportGenerated').catch(() => {})
+    if (user && !impersonating) markAchievementEvent(effectiveUid, 'reportGenerated').catch(() => {})
     window.print()
   }
 
@@ -383,9 +385,6 @@ function QuickReport({ icon: Icon, title, sub, onClick }: { icon: LucideIcon; ti
 /* helpers */
 function toISO(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
-function isToday(d: Date, now: Date) {
-  return toISO(d) === toISO(now)
 }
 function termStartISO(tt: Timetable | null, now: Date) {
   const terms = tt?.terms ?? []

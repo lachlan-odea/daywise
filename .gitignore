@@ -7,6 +7,12 @@ dist-ssr
 .env
 .env.*
 !.env.example
+
+# Firebase service-account keys. These grant full admin access and BYPASS Firestore
+# security rules entirely — never commit one. This repo is public.
+serviceAccount*.json
+*-firebase-adminsdk-*.json
+firebase-adminsdk*.json
 .DS_Store
 .vscode/*
 !.vscode/extensions.json

@@ -9,6 +9,7 @@ import {
   serverTimestamp,
   setDoc,
   updateDoc,
+  where,
   type Timestamp,
 } from 'firebase/firestore'
 import { db } from './firebase'
@@ -26,13 +27,38 @@ export interface Announcement {
   createdAt?: Timestamp
 }
 
-/** All announcements (newest first). Admins see everything; the bell filters to active. */
+/**
+ * ALL announcements including drafts and retracted ones (newest first).
+ * Admin-only — the read rule in firestore.rules rejects this unfiltered query for
+ * everyone else. Non-admin callers must use subscribeActiveAnnouncements().
+ */
 export function subscribeAnnouncements(cb: (items: Announcement[]) => void) {
   if (!db) {
     cb([])
     return () => {}
   }
   const q = query(collection(db, 'announcements'), orderBy('createdAt', 'desc'))
+  return onSnapshot(
+    q,
+    (snap) => cb(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Announcement) }))),
+    () => cb([]),
+  )
+}
+
+/**
+ * Published announcements only — safe for any signed-in user.
+ *
+ * The where() clause is what lets Firestore satisfy the `resource.data.active == true`
+ * read rule for a list query. Deliberately no orderBy: a single equality filter uses
+ * the automatic single-field index, whereas equality + orderBy on a different field
+ * would require a composite index to be deployed first. Callers sort client-side.
+ */
+export function subscribeActiveAnnouncements(cb: (items: Announcement[]) => void) {
+  if (!db) {
+    cb([])
+    return () => {}
+  }
+  const q = query(collection(db, 'announcements'), where('active', '==', true))
   return onSnapshot(
     q,
     (snap) => cb(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Announcement) }))),

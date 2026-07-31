@@ -15,6 +15,7 @@ import {
   Bell,
   type LucideIcon,
 } from 'lucide-react'
+import { sendEmailVerification } from 'firebase/auth'
 import { useAuth, authErrorMessage } from '../context/AuthContext'
 import { useProfile } from '../hooks/useProfile'
 import { updateUserProfileDoc, ROLE_OPTIONS, STATE_OPTIONS, PLAN_LABELS, type Plan } from '../lib/profile'
@@ -145,6 +146,8 @@ export default function Settings() {
 
   /* communication preferences */
   const [emailReminders, setEmailReminders] = useState(true)
+  const [verifyBusy, setVerifyBusy] = useState(false)
+  const [verifySent, setVerifySent] = useState(false)
   const [savingComms, setSavingComms] = useState(false)
 
   useEffect(() => {
@@ -172,6 +175,19 @@ export default function Settings() {
       setEmailReminders(!next) // revert on failure
     } finally {
       setSavingComms(false)
+    }
+  }
+
+  const sendVerification = async () => {
+    if (!user) return
+    setVerifyBusy(true)
+    try {
+      await sendEmailVerification(user)
+      setVerifySent(true)
+    } catch {
+      /* Most likely rate-limited by Firebase. The button re-enables so it can be retried. */
+    } finally {
+      setVerifyBusy(false)
     }
   }
 
@@ -419,6 +435,29 @@ export default function Settings() {
                 />
               </button>
             </div>
+            {/* Email verification. Admin access requires a verified address, and a
+                verified address is what stops the weekly mailer being pointed
+                somewhere it shouldn't be. */}
+            {user && !user.emailVerified && (
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-amber-900">Email address not verified</p>
+                  <p className="mt-0.5 text-sm text-amber-800">
+                    {verifySent
+                      ? 'Verification email sent — check your inbox and click the link, then reload this page.'
+                      : `Confirm ${user.email} so we know we're reaching the right inbox.`}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={sendVerification}
+                  disabled={verifyBusy || verifySent}
+                  className="shrink-0 rounded-full bg-amber-600 px-4 py-2 text-sm font-bold text-white hover:bg-amber-700 disabled:opacity-60"
+                >
+                  {verifyBusy ? 'Sending…' : verifySent ? 'Sent' : 'Send verification email'}
+                </button>
+              </div>
+            )}
             <p className="mt-3 text-xs text-navy-400">
               You can also unsubscribe directly from any email. Account and security notices are always sent.
             </p>

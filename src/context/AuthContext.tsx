@@ -4,6 +4,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signInWithPopup,
+  sendEmailVerification,
   signOut,
   updateProfile,
   updatePassword,
@@ -147,6 +148,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const cred = await createUserWithEmailAndPassword(requireAuth(), email, password)
     if (name) await updateProfile(cred.user, { displayName: name })
     await upsertUserProfile(cred.user)
+    // Verification matters beyond good hygiene: admin access is gated on a verified
+    // address (see isAdmin() in firestore.rules and src/lib/admin.ts), so without
+    // this an allow-listed address could be claimed by anyone who signs up with it.
+    // Best-effort — a send failure must not block a successful signup.
+    sendEmailVerification(cred.user).catch(() => {})
   }
 
   const signInWithEmail = async (email: string, password: string) => {

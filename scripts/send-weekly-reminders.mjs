@@ -14,6 +14,7 @@
  *   APP_URL                    app base URL (default https://lachlan-odea.github.io/daywise)
  *   DRY_RUN                    "1" to log emails instead of sending
  *   TEST_EMAIL                 send every message to this address instead of the real users
+ *   REQUIRE_VERIFIED_EMAIL     "1" to skip users whose email address is unverified
  */
 import admin from 'firebase-admin'
 
@@ -25,17 +26,58 @@ const {
   APP_URL = 'https://lachlan-odea.github.io/daywise',
   DRY_RUN,
   TEST_EMAIL,
+  REQUIRE_VERIFIED_EMAIL,
 } = process.env
 
-const dryRun = DRY_RUN === '1' || !RESEND_API_KEY
+// Dry run must be an EXPLICIT choice. Deriving it from a missing API key made the
+// job fail open: a rotated or renamed secret silently turned a real send into a
+// "success" that printed the entire user list and exited 0, so nobody noticed
+// reminders had stopped.
+const dryRun = DRY_RUN === '1'
+const requireVerified = REQUIRE_VERIFIED_EMAIL === '1'
 
 if (!FIREBASE_SERVICE_ACCOUNT) {
   console.error('Missing FIREBASE_SERVICE_ACCOUNT. Aborting.')
   process.exit(1)
 }
+if (!dryRun && !RESEND_API_KEY) {
+  console.error('Missing RESEND_API_KEY (and DRY_RUN is not set). Aborting.')
+  process.exit(1)
+}
 if (!dryRun && !EMAIL_FROM) {
   console.error('Missing EMAIL_FROM. Aborting.')
   process.exit(1)
+}
+
+// Basic shape check so a mistyped workflow input can't be used to point daywise's
+// verified sending domain at something unintended.
+const EMAIL_RE = /^[^\s@,;<>"]+@[^\s@,;<>"]+\.[^\s@,;<>"]+$/
+if (TEST_EMAIL && !EMAIL_RE.test(TEST_EMAIL)) {
+  console.error('TEST_EMAIL is not a valid email address. Aborting.')
+  process.exit(1)
+}
+
+/** Escape a value for safe interpolation into the email's HTML body. */
+const esc = (v) =>
+  String(v ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+
+/**
+ * First name for the greeting, clamped to a conservative charset.
+ *
+ * displayName is user-controlled free text with no validation, and it lands in the
+ * HTML body of a DKIM-signed email from our own domain — an ideal phishing surface.
+ * Note that splitting on whitespace is NOT a sufficient guard on its own: HTML5
+ * accepts "/" as an attribute separator, so `<a/href="https://evil">Click</a>` has
+ * no spaces. Anything that isn't plausibly a name falls back to "there".
+ */
+const safeFirstName = (displayName) => {
+  const first = String(displayName ?? '').trim().split(/\s+/)[0] ?? ''
+  return /^[\p{L}\p{M}'’-]{1,40}$/u.test(first) ? first : 'there'
 }
 
 admin.initializeApp({ credential: admin.credential.cert(JSON.parse(FIREBASE_SERVICE_ACCOUNT)) })
@@ -159,7 +201,14 @@ function buildEmail({ firstName, lessonsThisWeek, totalLessons, classes, hasProg
       ? 'Your teaching week — ready to record? 📝'
       : `Nice work — ${lessonsThisWeek} lesson${lessonsThisWeek === 1 ? '' : 's'} recorded this week`
 
+  // firstName is already charset-clamped by safeFirstName(), and escaped again here
+  // so the HTML body stays safe even if that clamp is ever loosened. The plain-text
+  // part below uses the unescaped value.
   const headline =
+    lessonsThisWeek === 0
+      ? `Hi ${esc(firstName)}, let’s capture this week’s teaching.`
+      : `Hi ${esc(firstName)}, here’s your week at a glance.`
+  const headlineText =
     lessonsThisWeek === 0
       ? `Hi ${firstName}, let’s capture this week’s teaching.`
       : `Hi ${firstName}, here’s your week at a glance.`
@@ -230,29 +279,57 @@ function buildEmail({ firstName, lessonsThisWeek, totalLessons, classes, hasProg
   </body>
 </html>`
 
-  const text = `${headline}\n\n${nudge}\n${streak >= 2 ? `\n🔥 ${streak}-day recording streak — keep it going!\n` : ''}\nThis week: ${lessonsThisWeek} · Total recorded: ${totalLessons} · Classes: ${classes}\n\nRecord a lesson: ${recordUrl}\n\nUnsubscribe: ${unsubUrl}`
+  const text = `${headlineText}\n\n${nudge}\n${streak >= 2 ? `\n🔥 ${streak}-day recording streak — keep it going!\n` : ''}\nThis week: ${lessonsThisWeek} · Total recorded: ${totalLessons} · Classes: ${classes}\n\nRecord a lesson: ${recordUrl}\n\nUnsubscribe: ${unsubUrl}`
 
   return { subject, html, text }
 }
 
 async function run() {
-  console.log(`Weekly reminders — ${dryRun ? 'DRY RUN' : 'LIVE'}${TEST_EMAIL ? ` (test → ${TEST_EMAIL})` : ''}`)
+  console.log(`Weekly reminders — ${dryRun ? 'DRY RUN' : 'LIVE'}${TEST_EMAIL ? ' (test mode)' : ''}`)
   const cutoff = isoDaysAgo(7)
   const usersSnap = await db.collection('users').get()
   let sent = 0
   let skipped = 0
+  let unverified = 0
 
   for (const doc of usersSnap.docs) {
     const p = doc.data()
     const uid = doc.id
-    const email = TEST_EMAIL || p.email
-    if (!email) {
-      skipped++
-      continue
-    }
+
     if (p.emailReminders === false) {
       skipped++
       continue
+    }
+
+    // Resolve the recipient from the Firebase Auth record, NOT from the Firestore
+    // profile document. The profile doc is writable by its owner, so trusting
+    // p.email let any signed-up user point daywise's verified sending domain at an
+    // arbitrary third party. Auth email changes require ownership of the new
+    // address, so this is the trustworthy source.
+    let email = TEST_EMAIL
+    if (!email) {
+      let authUser
+      try {
+        authUser = await admin.auth().getUser(uid)
+      } catch {
+        skipped++ // no Auth record (deleted user with an orphaned profile doc)
+        continue
+      }
+      if (!authUser.email) {
+        skipped++
+        continue
+      }
+      if (!authUser.emailVerified) {
+        unverified++
+        // Opt-in strict mode. Off by default because this codebase has not
+        // historically sent verification emails, so most existing accounts are
+        // unverified and would silently stop receiving reminders.
+        if (requireVerified) {
+          skipped++
+          continue
+        }
+      }
+      email = authUser.email
     }
 
     const base = db.collection('users').doc(uid)
@@ -283,11 +360,16 @@ async function run() {
     const classes = classCount(ttSnap.data())
     const streak = computeStreak(recorded, missed, ttSnap.data())
 
-    const firstName = (p.displayName || '').split(' ')[0] || 'there'
+    const firstName = safeFirstName(p.displayName)
     const { subject, html, text } = buildEmail({ firstName, lessonsThisWeek, totalLessons, classes, hasProgram, streak })
 
+    // This repo is public, which makes Actions logs world-readable. Log an opaque
+    // uid prefix rather than the address so a run cannot be scraped for the full
+    // roster of registered teachers.
+    const ref = uid.slice(0, 6)
+
     if (dryRun) {
-      console.log(`• ${email} — "${subject}" (week ${lessonsThisWeek}, total ${totalLessons}, classes ${classes}, streak ${streak})`)
+      console.log(`• ${ref} — "${subject}" (week ${lessonsThisWeek}, total ${totalLessons}, classes ${classes}, streak ${streak})`)
       sent++
       if (TEST_EMAIL) break
       continue
@@ -296,14 +378,18 @@ async function run() {
     try {
       await sendEmail(email, subject, html, text)
       sent++
-      console.log(`✓ ${email}`)
+      console.log(`✓ ${ref}`)
     } catch (e) {
-      console.error(`✗ ${email}:`, e.message)
+      console.error(`✗ ${ref}:`, e.message)
     }
     if (TEST_EMAIL) break
   }
 
-  console.log(`Done. Sent/queued: ${sent}, skipped: ${skipped}.`)
+  console.log(
+    `Done. Sent/queued: ${sent}, skipped: ${skipped}, unverified recipients: ${unverified}${
+      requireVerified ? ' (skipped — strict mode)' : ' (still sent — set REQUIRE_VERIFIED_EMAIL=1 to skip)'
+    }.`,
+  )
 }
 
 run().catch((e) => {

@@ -14,12 +14,20 @@ on:
         description: 'Send every message to this address instead of real users (testing)'
         default: ''
 
+# This job holds a full-admin Firebase service account, so keep the token minimal.
+permissions:
+  contents: read
+
 jobs:
   send:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # Don't leave GITHUB_TOKEN in .git/config where a dependency's install
+          # script could read it.
+          persist-credentials: false
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -27,8 +35,13 @@ jobs:
           node-version: 20
           cache: npm
 
+      # --ignore-scripts: this job's next step holds FIREBASE_SERVICE_ACCOUNT (which
+      # bypasses Firestore rules entirely) and RESEND_API_KEY. Without this flag, a
+      # postinstall hook anywhere in the dependency tree could patch the script on
+      # disk and run with both secrets. The mailer only needs firebase-admin, which
+      # has no build step.
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Send weekly reminders
         run: node scripts/send-weekly-reminders.mjs

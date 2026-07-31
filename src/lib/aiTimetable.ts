@@ -1,5 +1,6 @@
 import app, { firebaseConfigured } from './firebase'
 import { assignColors, cellKey, newId, type ClassCell, type Period, type Timetable } from './timetable'
+import { assertSafeUpload } from './uploadGuard'
 
 /** Whether AI extraction can be attempted (Firebase configured + app initialised). */
 export function aiAvailable(): boolean {
@@ -91,6 +92,7 @@ async function wordText(file: File): Promise<string> {
 }
 
 export async function extractTextForAI(file: File): Promise<string> {
+  await assertSafeUpload(file)
   const name = file.name.toLowerCase()
   if (name.endsWith('.pdf')) return (await pdfExtract(file)).text
   if (name.endsWith('.xlsx') || name.endsWith('.xls') || name.endsWith('.csv')) return excelText(file)

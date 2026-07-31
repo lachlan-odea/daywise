@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Bell, Info, Sparkles, Wrench, Trophy, Check, X, type LucideIcon } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import {
-  subscribeAnnouncements,
+  subscribeActiveAnnouncements,
   subscribeDismissals,
   dismissAnnouncement,
   type Announcement,
@@ -51,7 +51,7 @@ export default function NotificationsBell() {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
-  useEffect(() => subscribeAnnouncements(setAnnouncements), [])
+  useEffect(() => subscribeActiveAnnouncements(setAnnouncements), [])
   useEffect(() => {
     if (!user) return
     return subscribeDismissals(user.uid, setDismissed)

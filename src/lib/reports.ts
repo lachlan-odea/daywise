@@ -110,7 +110,8 @@ export function computeStreak(entries: LessonEntry[], tt: Timetable | null, now:
     return keys
   }
 
-  const today = new Date()
+  // Copied so the day-stepping loop below can't mutate the caller's date.
+  const today = new Date(now)
   const dates = entries.map((e) => e.date).filter(Boolean).sort()
   const firstStart = (tt.terms ?? []).map((t) => t?.start).filter(Boolean).sort()[0]
   const earliest = [dates[0], firstStart].filter(Boolean).sort()[0]
@@ -203,7 +204,6 @@ export function buildOverview(params: {
 
   // KPI: achievement progress (earned badges / total badges)
   const taught = entries.filter((e) => !e.missed)
-  const programsStarted = programs.filter((p) => taught.some((e) => e.programId === p.program.id)).length
   const stats = computeStats({
     entries: taught,
     programs,
@@ -302,7 +302,14 @@ export function buildOverview(params: {
 
 function csvCell(v: unknown): string {
   const s = v == null ? '' : String(v)
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+  // Neutralise spreadsheet formula injection. Lesson notes and evidence are free
+  // text, and an exported register is opened in Excel — often by someone else, since
+  // admin "view as" lets an admin export another teacher's entries. A leading =, +,
+  // -, @, tab or CR makes Excel evaluate the cell (e.g. =HYPERLINK(...) exfiltrating
+  // neighbouring cells, or a DDE payload). Quoting alone does NOT prevent this, so
+  // prefix a single quote to force text.
+  const safe = /^[=+\-@\t\r]/.test(s) ? `'${s}` : s
+  return /[",\n\r]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe
 }
 function toCsv(rows: (string | number)[][]): string {
   return rows.map((r) => r.map(csvCell).join(',')).join('\r\n')
