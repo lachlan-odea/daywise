@@ -19,6 +19,7 @@ import {
 import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore'
 import { auth, db, googleProvider, microsoftProvider } from '../lib/firebase'
 import { isAdmin } from '../lib/admin'
+import { pingActivity } from '../lib/activity'
 import { deleteAllUserData } from '../lib/profile'
 
 const IMPERSONATE_KEY = 'daywise:impersonate'
@@ -96,6 +97,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const unsub = onAuthStateChanged(auth, (u) => {
       setUser(u)
       setLoading(false)
+      // Record the day, not just the moment. Done here rather than in the sign-in
+      // handlers so a restored session counts too — most visits never re-authenticate.
+      if (u) void pingActivity(u.uid)
     })
     return unsub
   }, [])
