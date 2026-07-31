@@ -1,8 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Mic, Sparkles, Waves, Plus, CalendarClock, Pencil, CalendarDays, Check, NotebookPen, Flame, Trophy, ChevronRight, ChevronLeft } from 'lucide-react'
+import { Mic, Sparkles, Waves, CalendarClock, Pencil, CalendarDays, Check, NotebookPen, Flame, Trophy, ChevronRight, ChevronLeft } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useProfile } from '../hooks/useProfile'
+import SetupChecklist from '../components/SetupChecklist'
+import WelcomeModal from '../components/WelcomeModal'
+import { buildOnboarding } from '../lib/onboarding'
+import { updateUserProfileDoc } from '../lib/profile'
 import {
   CLASS_COLORS,
   cellKey,
@@ -26,9 +30,12 @@ const classKey = (subject?: string, className?: string) =>
   `${(subject || '').trim().toLowerCase()}|${(className || '').trim().toLowerCase()}`
 
 export default function Dashboard() {
-  const { user, effectiveUid } = useAuth()
-  const { profile } = useProfile()
+  const { user, effectiveUid, impersonating } = useAuth()
+  const { profile, loading: profileLoading } = useProfile()
   const [tt, setTt] = useState<Timetable | null>(null)
+  // subscribeTimetable reports null for "no timetable saved", so a separate flag is
+  // needed to tell that apart from "still loading".
+  const [ttLoaded, setTtLoaded] = useState(false)
   const [programs, setPrograms] = useState<Program[] | null>(null)
   const [entries, setEntries] = useState<LessonEntry[] | null>(null)
   const [planning, setPlanning] = useState<PlanningNotes>({})
@@ -36,6 +43,9 @@ export default function Dashboard() {
   const [draft, setDraft] = useState('')
   const [savingNote, setSavingNote] = useState(false)
   const [dayOffset, setDayOffset] = useState(0)
+  // Closes the welcome modal immediately rather than waiting for the Firestore
+  // snapshot carrying onboardingWelcomeSeen to round-trip.
+  const [greetDismissed, setGreetDismissed] = useState(false)
 
   const displayName = profile?.displayName || user?.displayName || user?.email?.split('@')[0] || 'Teacher'
   const firstName = displayName.split(' ')[0]
@@ -73,8 +83,12 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!user) return
-    return subscribeTimetable(effectiveUid, setTt)
-  }, [user])
+    setTtLoaded(false)
+    return subscribeTimetable(effectiveUid, (next) => {
+      setTt(next)
+      setTtLoaded(true)
+    })
+  }, [user, effectiveUid])
 
   useEffect(() => {
     if (!user) return
@@ -153,6 +167,35 @@ export default function Dashboard() {
   // Teaching streak — consecutive teaching days with a recorded lesson.
   const streak = useMemo(() => computeStreak(entries ?? [], tt, now), [entries, tt, now])
 
+  // Guided onboarding. Progress is derived from real data, so it stays accurate for
+  // existing users and un-ticks itself if the underlying data is removed. Held back
+  // until everything has loaded so the card can't flash a misleading "0 of 5".
+  const onboarding = useMemo(() => {
+    if (profileLoading || !ttLoaded || programs === null || entries === null) return null
+    return buildOnboarding({
+      profile,
+      timetable: tt,
+      programCount: programs.length,
+      entryCount: entries.length,
+    })
+  }, [profile, profileLoading, tt, ttLoaded, programs, entries])
+
+  // Greet only genuinely new accounts. Long-standing users predate the flag, so
+  // gating on isBrandNew stops them being welcomed to an app they already use.
+  // Never while impersonating — rules allow profile writes by the owner only.
+  const shouldGreet =
+    !!user &&
+    !impersonating &&
+    !greetDismissed &&
+    !!onboarding?.isBrandNew &&
+    !profileLoading &&
+    !profile?.onboardingWelcomeSeen
+
+  const dismissOnboarding = () => {
+    if (!user || impersonating) return
+    updateUserProfileDoc(user.uid, { onboardingDismissed: true }).catch(() => {})
+  }
+
   // Nearest unearned badge with visible progress, for a quick achievement nudge.
   const nextBadge = useMemo(() => {
     const taught = (entries ?? []).filter((e) => !e.missed)
@@ -230,25 +273,17 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Setup banner — only until the first program is uploaded */}
-      {programs && programs.length === 0 && (
-        <div className="mt-6 flex flex-col gap-3 rounded-2xl border border-teal-200 bg-gradient-to-br from-teal-50 to-white p-5 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-start gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-500 text-white">
-              <Sparkles size={18} />
-            </span>
-            <div>
-              <p className="font-bold text-navy-900">You’re signed in — welcome aboard!</p>
-              <p className="text-sm text-navy-500">
-                Upload your first teaching program so Curriculum Intelligence can start matching your lessons.
-              </p>
-            </div>
-          </div>
-          <Link to="/app/programs" className="btn-navy shrink-0 text-sm">
-            <Plus size={16} /> Upload a program
-          </Link>
-        </div>
-      )}
+      {/* Guided setup — replaces the old program-only banner with the full sequence.
+          Hidden while impersonating (the card is for the account holder, and its
+          data sources aren't all keyed to effectiveUid). The completed state is only
+          shown to people who were actually onboarded, so long-standing users who
+          were already set up don't get a stray "all set up!" celebration. */}
+      {onboarding &&
+        !impersonating &&
+        !profile?.onboardingDismissed &&
+        (!onboarding.complete || profile?.onboardingWelcomeSeen) && (
+          <SetupChecklist state={onboarding} onDismiss={dismissOnboarding} />
+        )}
 
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
         {/* Today's timetable */}
@@ -535,6 +570,9 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {shouldGreet && user && (
+        <WelcomeModal uid={user.uid} firstName={firstName} onClose={() => setGreetDismissed(true)} />
+      )}
     </main>
   )
 }

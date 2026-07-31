@@ -148,6 +148,7 @@ export default function Settings() {
   const [emailReminders, setEmailReminders] = useState(true)
   const [verifyBusy, setVerifyBusy] = useState(false)
   const [verifySent, setVerifySent] = useState(false)
+  const [savingGuide, setSavingGuide] = useState(false)
   const [savingComms, setSavingComms] = useState(false)
 
   useEffect(() => {
@@ -175,6 +176,29 @@ export default function Settings() {
       setEmailReminders(!next) // revert on failure
     } finally {
       setSavingComms(false)
+    }
+  }
+
+  // Read straight from the profile rather than mirrored into local state, so the
+  // control always reflects what the Dashboard will actually do.
+  const guideHidden = profile?.onboardingDismissed === true
+
+  const toggleGuide = async () => {
+    if (!user || readOnly) return
+    setSavingGuide(true)
+    try {
+      await updateUserProfileDoc(user.uid, {
+        onboardingDismissed: !guideHidden,
+        // Asking for the guide explicitly counts as engaging with onboarding. Without
+        // this, an established account (which predates the flag) would click "Show on
+        // dashboard" and see nothing, because the Dashboard suppresses the completed
+        // state for users who were never onboarded.
+        ...(guideHidden ? { onboardingWelcomeSeen: true } : {}),
+      })
+    } catch {
+      /* non-fatal — the snapshot leaves the button showing the real state */
+    } finally {
+      setSavingGuide(false)
     }
   }
 
@@ -366,6 +390,33 @@ export default function Settings() {
                 </button>
               </div>
             </form>
+
+            {/* Setup guide visibility. Lives here rather than in its own section
+                because it's part of getting your account established. */}
+            <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-navy-100 pt-5">
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-navy-900">Setup guide</p>
+                <p className="mt-0.5 text-sm text-navy-500">
+                  {guideHidden
+                    ? 'Hidden. Show it again to pick up where you left off.'
+                    : 'Showing on your dashboard until every step is done.'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={toggleGuide}
+                disabled={savingGuide || readOnly || !firebaseConfigured}
+                className="shrink-0 rounded-full border border-navy-200 bg-white px-4 py-2 text-sm font-semibold text-navy-600 hover:bg-navy-50 disabled:opacity-60"
+              >
+                {savingGuide ? (
+                  <Loader2 size={15} className="animate-spin" />
+                ) : guideHidden ? (
+                  'Show on dashboard'
+                ) : (
+                  'Hide'
+                )}
+              </button>
+            </div>
           </SectionCard>
 
           {/* SECURITY */}
