@@ -244,6 +244,18 @@
           <input id="email" type="email" placeholder="you@school.edu.au" autocomplete="email" required />
           <button id="submit" type="submit">Notify me</button>
         </div>
+        <!-- Honeypot: hidden from people, irresistible to naive bots. A filled value
+             means we skip the write. Kept out of the tab order and off screen rather
+             than display:none, which some bots detect. -->
+        <input
+          id="company"
+          name="company"
+          type="text"
+          tabindex="-1"
+          autocomplete="off"
+          aria-hidden="true"
+          style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;"
+        />
         <div class="msg" id="msg"></div>
         <p class="note">Be first in. We’ll email you the moment daywise opens — no spam.</p>
       </form>
@@ -337,7 +349,26 @@
       (Leaving FORM_ENDPOINT empty still shows the success state, but won't store anything.)
     -->
     <script>
-      var FORM_ENDPOINT = ''; // <-- paste your Apps Script Web App URL here
+      /* Waitlist capture.
+       *
+       * Writes straight to Firestore over its REST API, so this page stays a single
+       * self-contained file with no SDK. Both values below are Firebase's public web
+       * identifiers — the same pair already shipped in the main app's JS bundle. They
+       * are NOT secrets: access is controlled by the /waitlist rules in
+       * firestore.rules, which allow create-only and no public read.
+       *
+       * Deliberately not mode:'no-cors' (as the previous Apps Script version was).
+       * Firestore sends CORS headers, so the response is readable and a rejected
+       * write can actually be reported instead of silently showing success.
+       */
+      var FIREBASE_PROJECT_ID = 'daybook-f5bab';
+      var FIREBASE_API_KEY = 'AIzaSyAjkdSBV71wMYOVidQCrtE1L4H6x877QFc';
+
+      var WAITLIST_URL =
+        'https://firestore.googleapis.com/v1/projects/' +
+        FIREBASE_PROJECT_ID +
+        '/databases/(default)/documents/waitlist?key=' +
+        FIREBASE_API_KEY;
 
       document.getElementById('year').textContent = new Date().getFullYear();
 
@@ -345,41 +376,64 @@
       var input = document.getElementById('email');
       var button = document.getElementById('submit');
       var msg = document.getElementById('msg');
+      var honeypot = document.getElementById('company');
+
+      var showError = function (text) {
+        button.disabled = false;
+        button.textContent = 'Notify me';
+        msg.textContent = text;
+        msg.className = 'msg error';
+      };
+
+      var finish = function () {
+        document.body.classList.add('done');
+      };
 
       form.addEventListener('submit', function (e) {
         e.preventDefault();
         msg.textContent = '';
         msg.className = 'msg';
+
         var email = input.value.trim();
         if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
           msg.textContent = 'Please enter a valid email address.';
           msg.className = 'msg error';
           return;
         }
+
         button.disabled = true;
         button.textContent = 'Adding…';
 
-        var finish = function () {
-          document.body.classList.add('done');
-        };
-
-        if (!FORM_ENDPOINT) {
+        // Honeypot tripped — almost certainly a bot. Show the same success state so
+        // it gets no signal, but write nothing.
+        if (honeypot && honeypot.value) {
           finish();
           return;
         }
 
-        fetch(FORM_ENDPOINT, {
+        fetch(WAITLIST_URL, {
           method: 'POST',
-          mode: 'no-cors',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: new URLSearchParams({ email: email, source: 'coming-soon', ts: new Date().toISOString() }),
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            fields: {
+              email: { stringValue: email },
+              source: { stringValue: 'coming-soon' },
+              createdAt: { timestampValue: new Date().toISOString() },
+            },
+          }),
         })
-          .then(finish)
+          .then(function (res) {
+            if (res.ok) {
+              finish();
+              return;
+            }
+            // 400/403 here means the rules rejected the write or the config is wrong.
+            // Never show success in that case — the whole point is not to tell someone
+            // they're on a list they aren't on.
+            showError('Sorry, we couldn’t add you just then — please try again.');
+          })
           .catch(function () {
-            button.disabled = false;
-            button.textContent = 'Notify me';
-            msg.textContent = 'Something went wrong — please try again.';
-            msg.className = 'msg error';
+            showError('Something went wrong — please check your connection and try again.');
           });
       });
     </script>
