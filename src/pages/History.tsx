@@ -14,7 +14,15 @@ import {
 import { useAuth } from '../context/AuthContext'
 import { useConfirm } from '../components/ConfirmProvider'
 import { subscribeEntries, deleteEntry, type LessonEntry } from '../lib/entries'
-import { subscribePlanningDay, savePlanningNote, type PlanningNotes } from '../lib/planning'
+import {
+  subscribePlanningDay,
+  savePlanningNote,
+  isEmptyNote,
+  EMPTY_NOTE,
+  type NoteTag,
+  type PlanningNotes,
+} from '../lib/planning'
+import { NoteTagChips, NoteTagPicker } from '../components/NoteTags'
 import {
   subscribeTimetable,
   cellKey,
@@ -115,6 +123,7 @@ export default function History() {
   const [planning, setPlanning] = useState<PlanningNotes>({})
   const [editingNote, setEditingNote] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
+  const [draftTags, setDraftTags] = useState<NoteTag[]>([])
   const [savingNote, setSavingNote] = useState(false)
 
   const today = useMemo(() => new Date(), [])
@@ -140,20 +149,22 @@ export default function History() {
   }, [user, selected])
 
   const startEditNote = (periodId: string) => {
+    const existing = planning[periodId] ?? EMPTY_NOTE
     setEditingNote(periodId)
-    setDraft(planning[periodId] ?? '')
+    setDraft(existing.text)
+    setDraftTags(existing.tags)
   }
   const cancelNote = () => {
     setEditingNote(null)
     setDraft('')
+    setDraftTags([])
   }
   const saveNote = async (periodId: string) => {
     if (!user) return
     setSavingNote(true)
     try {
-      await savePlanningNote(effectiveUid, selected, periodId, draft)
-      setEditingNote(null)
-      setDraft('')
+      await savePlanningNote(effectiveUid, selected, periodId, { text: draft, tags: draftTags })
+      cancelNote()
     } finally {
       setSavingNote(false)
     }
@@ -430,7 +441,8 @@ export default function History() {
                   <div className="space-y-2">
                     {dayView.rows.map((r, i) => {
                       const color = (r.cell.color ?? 'teal') as ClassColor
-                      const note = planning[r.periodId] ?? ''
+                      const note = planning[r.periodId] ?? EMPTY_NOTE
+                      const hasNote = !isEmptyNote(note)
                       const isEditing = editingNote === r.periodId
                       return (
                         <div
@@ -482,11 +494,11 @@ export default function History() {
                               <button
                                 onClick={() => (isEditing ? cancelNote() : startEditNote(r.periodId))}
                                 className={`flex h-7 items-center gap-1 rounded-full px-2.5 text-[11px] font-bold transition-colors ${
-                                  note
+                                  hasNote
                                     ? 'bg-amber-100 text-amber-700 hover:bg-amber-200'
                                     : 'text-navy-400 hover:bg-navy-100'
                                 }`}
-                                title={note ? 'Edit planning note' : 'Add planning note'}
+                                title={hasNote ? 'Edit planning note' : 'Add planning note'}
                               >
                                 <NotebookPen size={12} /> Notes
                               </button>
@@ -500,9 +512,10 @@ export default function History() {
                                 value={draft}
                                 onChange={(e) => setDraft(e.target.value)}
                                 rows={3}
-                                placeholder="Planning notes for this lesson…"
+                                placeholder="Anything you need to remember for this lesson…"
                                 className="w-full rounded-lg border border-navy-200 bg-white p-2.5 text-sm text-navy-800 placeholder:text-navy-300 focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-100"
                               />
+                              <NoteTagPicker tags={draftTags} onChange={setDraftTags} className="mt-2" />
                               <div className="mt-2 flex items-center justify-end gap-2">
                                 <button
                                   onClick={cancelNote}
@@ -520,15 +533,18 @@ export default function History() {
                               </div>
                             </div>
                           ) : (
-                            note && (
+                            hasNote && (
                               <button
                                 onClick={() => startEditNote(r.periodId)}
                                 className="mt-3 block w-full text-left"
                                 title="Edit planning note"
                               >
-                                <span className="flex gap-1.5 rounded-lg bg-amber-50 px-3 py-2 text-sm text-navy-600 whitespace-pre-wrap">
-                                  <NotebookPen size={13} className="mt-0.5 shrink-0 text-amber-500" />
-                                  {note}
+                                <span className="block rounded-lg bg-amber-50 px-3 py-2">
+                                  <NoteTagChips tags={note.tags} className="mb-1.5" />
+                                  <span className="flex gap-1.5 text-sm text-navy-600 whitespace-pre-wrap">
+                                    <NotebookPen size={13} className="mt-0.5 shrink-0 text-amber-500" />
+                                    {note.text}
+                                  </span>
                                 </span>
                               </button>
                             )

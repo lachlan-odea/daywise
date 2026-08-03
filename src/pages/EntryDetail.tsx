@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import { useConfirm } from '../components/ConfirmProvider'
 import { getEntry, deleteEntry, updateEntry, type LessonEntry, type Evidence } from '../lib/entries'
 import { subscribeTimetable, currentWeek, cellKey, type Timetable } from '../lib/timetable'
-import { subscribePlanningDay, type PlanningNotes } from '../lib/planning'
+import { subscribePlanningDay, noteTagMeta, type PlanningNote, type PlanningNotes } from '../lib/planning'
 
 const inputCls =
   'w-full rounded-xl border border-navy-200 bg-white px-4 py-2.5 text-navy-900 outline-none transition-colors placeholder:text-navy-300 focus:border-teal-400 focus:ring-4 focus:ring-teal-100'
@@ -140,20 +140,20 @@ export default function EntryDetail() {
   }, [user, entry?.date])
 
   // Match this entry to its timetabled period on that date to surface its planning note.
-  const planningNote = useMemo(() => {
-    if (!tt || !entry) return ''
+  const planningNote = useMemo<PlanningNote | null>(() => {
+    if (!tt || !entry) return null
     const [y, m, d] = entry.date.split('-').map(Number)
-    if (!y) return ''
+    if (!y) return null
     const date = new Date(y, (m || 1) - 1, d || 1)
     const weekday = (date.getDay() + 6) % 7
-    if (weekday > 4) return ''
+    if (weekday > 4) return null
     const week = currentWeek(tt, date)
     for (const p of tt.periods) {
       if (!isTeachingPeriod(p.label)) continue
       const cell = tt.cells[cellKey(week, p.id, weekday)]
-      if (cell && sameClass(entry, cell)) return planning[p.id] ?? ''
+      if (cell && sameClass(entry, cell)) return planning[p.id] ?? null
     }
-    return ''
+    return null
   }, [tt, entry, planning])
 
   const startEdit = () => {
@@ -351,13 +351,20 @@ export default function EntryDetail() {
         <p className="whitespace-pre-wrap text-sm leading-relaxed text-navy-700">{entry.note || '—'}</p>
       </div>
 
-      {/* planning note (managed on the diary/dashboard for this class + day) */}
-      {planningNote && (
+      {/* planning note (managed on the dashboard daybook for this class + day) */}
+      {planningNote?.text && (
         <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50/60 p-5">
-          <p className="mb-1.5 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-amber-700">
-            <NotebookPen size={12} /> Planning note
-          </p>
-          <p className="whitespace-pre-wrap text-sm leading-relaxed text-navy-700">{planningNote}</p>
+          <div className="mb-1.5 flex flex-wrap items-center gap-2">
+            <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-amber-700">
+              <NotebookPen size={12} /> Planning note
+            </p>
+            {planningNote.tags.map((t) => (
+              <span key={t} className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${noteTagMeta(t).chip}`}>
+                {noteTagMeta(t).label}
+              </span>
+            ))}
+          </div>
+          <p className="whitespace-pre-wrap text-sm leading-relaxed text-navy-700">{planningNote.text}</p>
         </div>
       )}
 
