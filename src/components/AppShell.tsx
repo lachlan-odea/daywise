@@ -10,6 +10,7 @@ import {
   Settings as SettingsIcon,
   LogOut,
   Menu,
+  School,
   X,
   Download,
   Crown,
@@ -36,6 +37,7 @@ const nav: NavItem[] = [
   { to: '/app/history', label: 'Diary', icon: History },
   { to: '/app/record', label: 'Record Lesson', icon: Mic },
   { to: '/app/timetable', label: 'Timetable', icon: CalendarClock },
+  { to: '/app/classes', label: 'Classes', icon: School },
   { to: '/app/programs', label: 'Programs', icon: BookOpen },
   { to: '/app/reports', label: 'Data & Reports', icon: BarChart3 },
 ]

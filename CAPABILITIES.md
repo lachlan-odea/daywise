@@ -200,8 +200,32 @@ the model.
   burst** (respects reduced-motion). A matching entry is also added to the **notification bell**
   (per-user notifications, `users/{uid}/notifications`).
 
+### 15. Classes
+- **My Classes** page (`/app/classes`, nav item between Timetable and Programs) — set up each class
+  you teach: name, subject, class code, year group, room, colour and icon (the icon is picked
+  automatically from the subject, or choose your own).
+- Classes are identified by the same **subject + class code key** used everywhere else
+  (`classKey`), so a class page automatically lines up with its timetable cells, diary entries and
+  the `meta/classPrograms` links. Stored at `users/{uid}/classes`.
+- **Timetable-aware:** classes on your timetable that don't have a page yet are suggested for
+  one-click setup (pre-filled subject/code/room/colour, with a guessed year group), and each class
+  shows its weekly schedule (e.g. "Mon 1, Tue 2"; fortnightly slots get a Wk A/B suffix).
+- **Class page** (`/app/classes/:id`) with Overview / Programs / Notes tabs (Analytics and
+  Resources marked *Soon*; a Shared-with-Me tab on the list page is also *Soon*):
+  - **Overview** — current program with progress bar (distinct recorded lessons ÷ lesson count),
+    a class details card, a curriculum card (syllabus linking marked *Soon*), analytics tiles
+    scoped to the current term (lessons
+    recorded, program coverage, distinct outcomes, reflections), a **learning timeline** ticking
+    off the current program's lessons as they're recorded, and quick actions (assign program,
+    record lesson, add note, view data).
+  - **Programs** — assign/unassign the program(s) the class follows; writes the same
+    `meta/classPrograms` map Record Lesson uses for matching.
+  - **Notes** — freeform per-class notes saved on the class doc.
+- Deleting a class removes only the class page — timetable, diary entries and programs are
+  untouched.
+
 ## Planned / not yet built
-- Student-level records and reporting.
+- Student-level records and reporting (the class page's Students tab is deliberately not built yet).
 - Billing/subscription management (plans are display-only today).
 - AI backend option for the toughest PDF/Word extractions (currently client-side Gemini + heuristics).
 
@@ -210,6 +234,16 @@ the model.
 ## Changelog (closed beta, pre-v0.1)
 
 _Newest first. Each entry corresponds to work pushed to `main`._
+
+### 2026-08-04
+- New **Classes** section — a "My Classes" page to set up each class you teach (name, subject,
+  code, year group, room, colour, icon — auto-picked from the subject but customisable), with
+  one-click suggestions pulled from the timetable. Each
+  class gets its own page: overview (current program + progress, term analytics, learning
+  timeline, quick actions), program assignment (backed by the existing `meta/classPrograms`
+  matching map) and per-class notes. Analytics/Resources tabs, class sharing and
+  curriculum/syllabus linking are stubbed as "Soon"; a Students tab is deliberately not included
+  yet.
 
 ### 2026-07-28
 - **Account deletion now erases all Firestore data** — previously only the profile doc + auth user
