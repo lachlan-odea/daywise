@@ -11,6 +11,7 @@ import Dashboard from './pages/Dashboard'
 import Timetable from './pages/Timetable'
 import Classes from './pages/Classes'
 import ClassDetail from './pages/ClassDetail'
+import SharedClass from './pages/SharedClass'
 import Programs from './pages/Programs'
 import ProgramDetail from './pages/ProgramDetail'
 import Record from './pages/Record'
@@ -44,6 +45,7 @@ export default function App() {
             <Route path="timetable" element={<Timetable />} />
             <Route path="classes" element={<Classes />} />
             <Route path="classes/:id" element={<ClassDetail />} />
+            <Route path="shared/:id" element={<SharedClass />} />
             <Route path="programs" element={<Programs />} />
             <Route path="programs/:id" element={<ProgramDetail />} />
             <Route path="record" element={<Record />} />

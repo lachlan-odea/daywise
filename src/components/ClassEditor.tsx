@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { AlertTriangle, CalendarClock, Check, Loader2, School, X } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { saveClass, timetableClasses, updateClass, type ClassInfo, type TimetableClass } from '../lib/classes'
+import { sharedClassMeta, updateSharedClass } from '../lib/sharedClasses'
 import { classKey } from '../lib/classPrograms'
 import { getTimetableOnce, CLASS_COLORS, type ClassColor } from '../lib/timetable'
 import ClassIconTile, { CLASS_ICONS, subjectIconKey } from './ClassIcon'
@@ -85,6 +86,7 @@ export default function ClassEditor({
     try {
       if (existing?.id) {
         await updateClass(effectiveUid, existing.id, payload)
+        if (existing.sharedClassId) await updateSharedClass(existing.sharedClassId, sharedClassMeta(payload))
         onSaved(existing.id)
       } else {
         const id = await saveClass(effectiveUid, { ...payload, notes: '' })

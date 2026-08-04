@@ -17,8 +17,10 @@ import {
   Mic,
   Plus,
   Settings as SettingsIcon,
+  Share2,
   StickyNote,
   Trash2,
+  Users,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useConfirm } from '../components/ConfirmProvider'
@@ -27,8 +29,10 @@ import { classKey, subscribeClassPrograms, setClassProgramsForClass, type ClassP
 import { getProgram, subscribePrograms, unitLabel, type Lesson, type Program } from '../lib/programs'
 import { currentTermIndex, subscribeTimetable, termInfo, type Timetable } from '../lib/timetable'
 import { subscribeEntries, type LessonEntry } from '../lib/entries'
+import { subscribeSharedClass, unshareClass, updateSharedClass, type SharedClass } from '../lib/sharedClasses'
 import ClassIconTile from '../components/ClassIcon'
 import ClassEditor from '../components/ClassEditor'
+import ShareClassModal from '../components/ShareClassModal'
 
 type Tab = 'overview' | 'programs' | 'notes'
 
@@ -65,6 +69,8 @@ export default function ClassDetail() {
   const [entries, setEntries] = useState<LessonEntry[]>([])
   const [tab, setTab] = useState<Tab>('overview')
   const [showSettings, setShowSettings] = useState(false)
+  const [showShare, setShowShare] = useState(false)
+  const [sharedClass, setSharedClass] = useState<SharedClass | null>(null)
   const [togglingId, setTogglingId] = useState<string | null>(null)
   const [timeline, setTimeline] = useState<{ programId: string; lessons: Lesson[] } | null>(null)
   const [noteDraft, setNoteDraft] = useState('')
@@ -90,6 +96,15 @@ export default function ClassDetail() {
   useEffect(() => {
     setNoteDraft(cls?.notes ?? '')
   }, [cls?.id])
+
+  const sharedId = cls?.sharedClassId
+  useEffect(() => {
+    if (!user || !sharedId) {
+      setSharedClass(null)
+      return
+    }
+    return subscribeSharedClass(sharedId, setSharedClass)
+  }, [user, sharedId])
 
   const key = cls ? classInfoKey(cls) : ''
   const assignedIds = useMemo(() => programMap[key] ?? [], [programMap, key])
@@ -170,6 +185,7 @@ export default function ClassDetail() {
     setNoteSaving(true)
     try {
       await updateClass(effectiveUid, cls.id, { notes: noteDraft })
+      if (cls.sharedClassId) await updateSharedClass(cls.sharedClassId, { notes: noteDraft })
       setNoteSaved(true)
       setTimeout(() => setNoteSaved(false), 2000)
     } finally {
@@ -181,10 +197,13 @@ export default function ClassDetail() {
     if (!user || !cls?.id) return
     const ok = await confirm({
       title: `Delete “${cls.name}”?`,
-      message: 'This removes the class page. Your timetable, diary entries and programs are not affected.',
+      message: cls.sharedClassId
+        ? 'This removes the class page and stops sharing it — everyone you shared it with loses access. Your timetable, diary entries and programs are not affected.'
+        : 'This removes the class page. Your timetable, diary entries and programs are not affected.',
       confirmLabel: 'Delete class',
     })
     if (!ok) return
+    if (cls.sharedClassId) await unshareClass(effectiveUid, cls.id, cls.sharedClassId)
     await deleteClass(effectiveUid, cls.id)
     navigate('/app/classes')
   }
@@ -259,10 +278,19 @@ export default function ClassDetail() {
                   <CalendarClock size={12} /> {schedule.join(' · ')}
                 </span>
               )}
+              {sharedClass && sharedClass.memberUids.length > 1 && (
+                <span className="flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-bold text-emerald-700">
+                  <Users size={12} /> Shared with {sharedClass.memberUids.length - 1} teacher
+                  {sharedClass.memberUids.length - 1 === 1 ? '' : 's'}
+                </span>
+              )}
             </div>
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <button onClick={() => setShowShare(true)} className="btn-ghost text-sm">
+            <Share2 size={15} /> {cls.sharedClassId ? 'Sharing' : 'Share'}
+          </button>
           <button onClick={() => setShowSettings(true)} className="btn-navy text-sm">
             <SettingsIcon size={15} /> Class settings
           </button>
@@ -629,6 +657,15 @@ export default function ClassDetail() {
 
       {showSettings && (
         <ClassEditor existing={cls} onClose={() => setShowSettings(false)} onSaved={() => setShowSettings(false)} />
+      )}
+
+      {showShare && (
+        <ShareClassModal
+          cls={cls}
+          sharedClass={sharedClass}
+          assignedPrograms={assigned}
+          onClose={() => setShowShare(false)}
+        />
       )}
     </main>
   )

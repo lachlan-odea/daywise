@@ -34,6 +34,8 @@ export interface ClassInfo {
   /** Curriculum / syllabus the class follows — reserved; syllabus linking is not built yet. */
   curriculum?: string
   notes?: string
+  /** Set when the class has been shared — points at its /sharedClasses/{id} doc. */
+  sharedClassId?: string
   createdAt?: Timestamp
 }
 

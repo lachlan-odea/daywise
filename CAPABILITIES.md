@@ -222,10 +222,32 @@ the model.
     `meta/classPrograms` map Record Lesson uses for matching.
   - **Notes** — freeform per-class notes saved on the class doc.
 - Deleting a class removes only the class page — timetable, diary entries and programs are
-  untouched.
+  untouched (if the class was shared, sharing is torn down too).
+- **Class sharing (Phase 1 — read-only collaboration):** a class can be shared with other
+  teachers from its page ("Share" → invite by email).
+  - Shared classes live in a top-level `/sharedClasses` collection (the owner's private class doc
+    keeps a `sharedClassId` pointer and stays the source of truth; edits and notes are written
+    through to the mirror). Assigned programs are copied in as a **snapshot** at share time —
+    later program edits are not synced yet.
+  - **Invites** (`/classInvites`, id `<classId>__<email>`) are addressed to an email and can only
+    be read/accepted by a signed-in user with a **verified** matching token email (same
+    trust-model reasoning as the admin/email rules). Accepting joins the class and consumes the
+    invite in one atomic batch; invites can be revoked (owner) or declined (invitee).
+  - The **Shared with Me** tab lists pending invites (accept/decline, badge count) and joined
+    classes; each opens a read-only view (`/app/shared/:id`) with class details, teachers, notes
+    and expandable program snapshots. Members can leave; owners can remove members or stop
+    sharing (which deletes the mirror, snapshots and open invites).
+  - Security rules force `memberUids` (queryable list) and `members` (uid → role/name map) to
+    move together; invitees can only ever add themselves, members only remove themselves.
+  - **Privacy:** diary entries, evidence and timetables are never shared.
+  - Not yet: contributing/co-teaching (member writes), shared analytics from multiple teachers'
+    recordings, ownership transfer when an owner deletes their account.
 
 ## Planned / not yet built
 - Student-level records and reporting (the class page's Students tab is deliberately not built yet).
+- Class sharing Phase 2+: member contribution (shared notes/details edits), an activity feed of
+  sanitized lesson summaries, multi-teacher class analytics, live program sync, and ownership
+  transfer / cleanup of shared classes when the owning account is deleted.
 - Billing/subscription management (plans are display-only today).
 - AI backend option for the toughest PDF/Word extractions (currently client-side Gemini + heuristics).
 
@@ -234,6 +256,15 @@ the model.
 ## Changelog (closed beta, pre-v0.1)
 
 _Newest first. Each entry corresponds to work pushed to `main`._
+
+### 2026-08-04 (later)
+- **Class sharing, Phase 1 (read-only)** — share a class with other teachers by email invite.
+  Shared classes live in a new top-level `/sharedClasses` collection with a program **snapshot**;
+  invites (`/classInvites`) require a verified matching sign-in email and are consumed atomically
+  on accept. The "Shared with Me" tab is now live (invites + joined classes), with a read-only
+  shared-class view at `/app/shared/:id` (details, teachers, notes, expandable programs). Owners
+  manage members/invites and can stop sharing; members can leave. Diary entries, evidence and
+  timetables are never shared. ⚠ Requires deploying the updated `firestore.rules`.
 
 ### 2026-08-04
 - New **Classes** section — a "My Classes" page to set up each class you teach (name, subject,
