@@ -156,10 +156,11 @@ const weekAB = (tt, date) => {
 
 /**
  * Current recording streak: consecutive teaching days (most recent first) that
- * have a recorded lesson. Missed lessons are neutral (don't break it); today is
- * given grace if nothing's recorded yet.
+ * have a recorded lesson. Missed lessons and days the teacher marked themselves
+ * away (illness, leave — users/{uid}/awayDays) are neutral and don't break it;
+ * today is given grace if nothing's recorded yet.
  */
-function computeStreak(recorded, missed, tt) {
+function computeStreak(recorded, missed, away, tt) {
   if (!tt?.periods?.length) return 0
   const teachingIds = new Set(tt.periods.filter((p) => isTeachingPeriod(p.label)).map((p) => p.id))
   const hasCalendar = (tt.terms ?? []).some((t) => t?.start && t?.end)
@@ -180,7 +181,9 @@ function computeStreak(recorded, missed, tt) {
   for (let i = 0; i < 140; i++) {
     if (scheduled(d)) {
       const iso = toISODate(d)
-      if (recorded.has(iso)) streak++
+      if (away.has(iso)) {
+        /* neutral — the day wasn't theirs to teach */
+      } else if (recorded.has(iso)) streak++
       else if (missed.has(iso)) {
         /* neutral */
       } else if (iso === todayISO) {
@@ -335,11 +338,12 @@ async function run() {
     }
 
     const base = db.collection('users').doc(uid)
-    const [totalAgg, progAgg, ttSnap, recentSnap] = await Promise.all([
+    const [totalAgg, progAgg, ttSnap, recentSnap, awaySnap] = await Promise.all([
       base.collection('entries').count().get(),
       base.collection('programs').count().get(),
       base.collection('timetable').doc('main').get(),
       base.collection('entries').where('date', '>=', isoDaysAgo(140)).get(),
+      base.collection('awayDays').where('date', '>=', isoDaysAgo(140)).get(),
     ])
 
     // Recent entries → this-week count (recorded only) + streak date sets.
@@ -357,10 +361,15 @@ async function run() {
       if (e.date >= cutoff) lessonsThisWeek++
     })
 
+    // Days marked away — neutral for the streak, so illness or leave doesn't cost it.
+    // The doc id is the date, but the field is read so the range query above can index.
+    const away = new Set()
+    awaySnap.forEach((d) => away.add(d.data()?.date || d.id))
+
     const totalLessons = totalAgg.data().count
     const hasProgram = progAgg.data().count > 0
     const classes = classCount(ttSnap.data())
-    const streak = computeStreak(recorded, missed, ttSnap.data())
+    const streak = computeStreak(recorded, missed, away, ttSnap.data())
 
     const firstName = safeFirstName(p.displayName)
     const { subject, html, text } = buildEmail({ firstName, lessonsThisWeek, totalLessons, classes, hasProgram, streak })

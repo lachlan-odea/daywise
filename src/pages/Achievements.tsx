@@ -10,6 +10,7 @@ import { useAuth } from '../context/AuthContext'
 import { useProfile } from '../hooks/useProfile'
 import { db } from '../lib/firebase'
 import { getEntriesOnce, type LessonEntry } from '../lib/entries'
+import { awayDateSet, getAwayDaysOnce, type AwayDays } from '../lib/away'
 import { getProgramList, getProgram } from '../lib/programs'
 import { subscribeTimetable, type Timetable } from '../lib/timetable'
 import type { LoadedProgram } from '../lib/reports'
@@ -85,6 +86,7 @@ export default function Achievements() {
   const [entries, setEntries] = useState<LessonEntry[] | null>(null)
   const [programs, setPrograms] = useState<LoadedProgram[] | null>(null)
   const [tt, setTt] = useState<Timetable | null>(null)
+  const [awayDays, setAwayDays] = useState<AwayDays>({})
   const [events, setEvents] = useState<AchievementEvents>({})
   const [granted, setGranted] = useState<string[]>([])
   const [feedbackCount, setFeedbackCount] = useState(0)
@@ -108,7 +110,11 @@ export default function Achievements() {
     if (!user) return
     let active = true
     ;(async () => {
-      const [ents, list] = await Promise.all([getEntriesOnce(effectiveUid), getProgramList(effectiveUid)])
+      const [ents, list, away] = await Promise.all([
+        getEntriesOnce(effectiveUid),
+        getProgramList(effectiveUid),
+        getAwayDaysOnce(effectiveUid),
+      ])
       const fulls = await Promise.all(list.map((p) => (p.id ? getProgram(effectiveUid, p.id) : null)))
       let fbCount = 0
       if (db) {
@@ -121,6 +127,7 @@ export default function Achievements() {
       if (!active) return
       setEntries(ents)
       setPrograms(fulls.filter(Boolean) as LoadedProgram[])
+      setAwayDays(away)
       setFeedbackCount(fbCount)
     })()
     return () => {
@@ -140,8 +147,9 @@ export default function Achievements() {
       events,
       perpetual: (profile?.plan ?? 'starter') === 'perpetual',
       granted,
+      awayDates: awayDateSet(awayDays),
     })
-  }, [entries, programs, tt, feedbackCount, events, granted, profile])
+  }, [entries, programs, tt, awayDays, feedbackCount, events, granted, profile])
 
   const earnedCount = useMemo(() => (stats ? BADGES.filter((b) => isBadgeEarned(b, stats)).length : 0), [stats])
 

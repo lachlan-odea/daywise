@@ -21,6 +21,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { getEntriesOnce, type LessonEntry } from '../lib/entries'
+import { awayDateSet, getAwayDaysOnce, type AwayDays } from '../lib/away'
 import { getProgramList, getProgram } from '../lib/programs'
 import { subscribeTimetable, type Timetable } from '../lib/timetable'
 import {
@@ -55,6 +56,7 @@ export default function Reports() {
   const [entries, setEntries] = useState<LessonEntry[] | null>(null)
   const [programs, setPrograms] = useState<LoadedProgram[] | null>(null)
   const [tt, setTt] = useState<Timetable | null>(null)
+  const [awayDays, setAwayDays] = useState<AwayDays>({})
   const [period, setPeriod] = useState<ReportPeriod>('term')
   const now = useMemo(() => new Date(), [])
 
@@ -74,11 +76,16 @@ export default function Reports() {
     if (!user) return
     let active = true
     ;(async () => {
-      const [ents, list] = await Promise.all([getEntriesOnce(effectiveUid), getProgramList(effectiveUid)])
+      const [ents, list, away] = await Promise.all([
+        getEntriesOnce(effectiveUid),
+        getProgramList(effectiveUid),
+        getAwayDaysOnce(effectiveUid),
+      ])
       const fulls = await Promise.all(list.map((p) => (p.id ? getProgram(effectiveUid, p.id) : null)))
       if (!active) return
       setEntries(ents)
       setPrograms(fulls.filter(Boolean) as LoadedProgram[])
+      setAwayDays(away)
     })()
     return () => {
       active = false
@@ -89,8 +96,8 @@ export default function Reports() {
 
   const ov = useMemo(() => {
     if (!entries || !programs) return null
-    return buildOverview({ entries, programs, timetable: tt, now, period })
-  }, [entries, programs, tt, now, period])
+    return buildOverview({ entries, programs, timetable: tt, now, period, awayDates: awayDateSet(awayDays) })
+  }, [entries, programs, tt, now, period, awayDays])
 
   if (loading || !ov) {
     return (

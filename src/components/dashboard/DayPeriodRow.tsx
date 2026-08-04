@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight, Check, Circle, Loader2, Mic, NotebookPen, Plus, Sparkles, Waves } from 'lucide-react'
+import { ArrowRight, CalendarOff, Check, Circle, Loader2, Mic, NotebookPen, Plus, Sparkles, Waves } from 'lucide-react'
 import { CLASS_COLORS, type ClassCell, type ClassColor, type TimeSlot, type Period } from '../../lib/timetable'
 import { isEmptyNote, type NoteTag, type PlanningNote } from '../../lib/planning'
 import { NoteTagChips, NoteTagPicker } from '../NoteTags'
@@ -163,6 +163,8 @@ export interface DayPeriodRowProps {
   recorded: boolean
   /** The lesson can be recorded now — a teaching period whose start time has passed. */
   recordable: boolean
+  /** The whole day is marked away, so an un-recorded lesson isn't something to chase. */
+  away: boolean
   recordHref: string
   editingNote: boolean
   savingNote: boolean
@@ -183,6 +185,7 @@ export default function DayPeriodRow({
   teaching,
   recorded,
   recordable,
+  away,
   recordHref,
   editingNote,
   savingNote,
@@ -287,6 +290,17 @@ export default function DayPeriodRow({
               <span className="inline-flex items-center gap-1 rounded-full bg-teal-50 px-2.5 py-1 text-[11px] font-bold text-teal-700">
                 <Check size={12} strokeWidth={3} /> Recorded
               </span>
+            ) : away ? (
+              // Away days aren't chased with the amber "Not recorded" nudge, but the
+              // link stays live — someone may still want to log what a relief teacher
+              // covered, or what they taught before going home.
+              <Link
+                to={recordHref}
+                className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-2.5 py-1 text-[11px] font-bold text-violet-600 hover:bg-violet-100"
+                title="You were away — record this lesson anyway"
+              >
+                <CalendarOff size={11} /> Away
+              </Link>
             ) : recordable ? (
               <Link
                 to={recordHref}

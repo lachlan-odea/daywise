@@ -9,11 +9,13 @@ import {
   ChevronLeft,
   ChevronRight,
   CalendarClock,
+  CalendarOff,
   NotebookPen,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useConfirm } from '../components/ConfirmProvider'
 import { subscribeEntries, deleteEntry, type LessonEntry } from '../lib/entries'
+import { awayReasonLabel, subscribeAwayDays, type AwayDays } from '../lib/away'
 import {
   subscribePlanningDay,
   savePlanningNote,
@@ -35,11 +37,12 @@ import {
   type Timetable,
 } from '../lib/timetable'
 
-type DayStatus = 'none' | 'green' | 'yellow' | 'red'
+type DayStatus = 'none' | 'green' | 'yellow' | 'red' | 'away'
 const STATUS_DOT: Record<Exclude<DayStatus, 'none'>, string> = {
   green: 'bg-emerald-500',
   yellow: 'bg-amber-500',
   red: 'bg-rose-500',
+  away: 'bg-violet-400',
 }
 
 const WEEKDAY_HEADERS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
@@ -119,6 +122,7 @@ export default function History() {
   const confirm = useConfirm()
   const [entries, setEntries] = useState<LessonEntry[] | null>(null)
   const [tt, setTt] = useState<Timetable | null>(null)
+  const [awayDays, setAwayDays] = useState<AwayDays>({})
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [planning, setPlanning] = useState<PlanningNotes>({})
   const [editingNote, setEditingNote] = useState<string | null>(null)
@@ -139,6 +143,13 @@ export default function History() {
   useEffect(() => {
     if (!user) return
     return subscribeTimetable(effectiveUid, setTt)
+  }, [user])
+
+  // Days marked away on the dashboard, so the calendar doesn't flag them as a day
+  // with nothing recorded.
+  useEffect(() => {
+    if (!user) return
+    return subscribeAwayDays(effectiveUid, setAwayDays)
   }, [user])
 
   // Planning notes for the selected day (shared with the dashboard's notes).
@@ -209,9 +220,12 @@ export default function History() {
   }
 
   // Evidence-coverage status for a day's pill: green=all classes recorded, yellow=some, red=none.
+  // A day marked away is reported as away instead — its lessons were never the
+  // teacher's to record, so a red "none" dot would be a false alarm.
   const dayStatus = (date: Date): DayStatus => {
     if (isHoliday(date)) return 'none'
     const iso = isoOf(date)
+    if (awayDays[iso]) return 'away'
     const dayEntries = entriesByDate.get(iso) ?? []
     const classes = classesForDate(date)
     if (classes.length > 0 && iso <= todayISO) {
@@ -407,14 +421,25 @@ export default function History() {
                 <span className="flex items-center gap-1.5">
                   <span className="h-2 w-2 rounded-full bg-rose-500" /> None
                 </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full bg-violet-400" /> Away
+                </span>
               </div>
             </div>
           </div>
 
           {/* selected day */}
           <div>
-            <h2 className="flex items-center gap-2 text-lg font-bold text-navy-900">
+            <h2 className="flex flex-wrap items-center gap-2 text-lg font-bold text-navy-900">
               <CalendarClock size={18} className="text-teal-500" /> {formatLong(selected)}
+              {awayDays[selected] && (
+                <span
+                  className="flex items-center gap-1 rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-bold text-violet-700"
+                  title={awayDays[selected].note || undefined}
+                >
+                  <CalendarOff size={11} /> Away · {awayReasonLabel(awayDays[selected].reason)}
+                </span>
+              )}
             </h2>
 
             {selectedEntries.length === 0 && dayView.rows.length === 0 ? (

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import {
   Mic,
   CalendarClock,
+  CalendarOff,
   Pencil,
   CalendarDays,
   Flame,
@@ -14,6 +15,7 @@ import { useAuth } from '../context/AuthContext'
 import { useProfile } from '../hooks/useProfile'
 import SetupChecklist from '../components/SetupChecklist'
 import WelcomeModal from '../components/WelcomeModal'
+import AwayDayDialog from '../components/dashboard/AwayDayDialog'
 import DayPeriodRow from '../components/dashboard/DayPeriodRow'
 import UpcomingActivities from '../components/dashboard/UpcomingActivities'
 import TodoWidget from '../components/dashboard/TodoWidget'
@@ -33,6 +35,15 @@ import { subscribeEntries, type LessonEntry } from '../lib/entries'
 import { subscribeClassPrograms, classKey, type ClassProgramMap } from '../lib/classPrograms'
 import { subscribeActivities, subscribeTodos, type Activity, type TodoItem } from '../lib/agenda'
 import { subscribePlanningDay, savePlanningNote, EMPTY_NOTE, type PlanningNote, type PlanningNotes } from '../lib/planning'
+import {
+  awayDateSet,
+  awayReasonLabel,
+  clearAwayDay,
+  markAwayDay,
+  subscribeAwayDays,
+  type AwayDays,
+  type AwayReason,
+} from '../lib/away'
 import { computeStreak } from '../lib/reports'
 import {
   buildPeriodContext,
@@ -61,6 +72,9 @@ export default function Dashboard() {
   const [editingNote, setEditingNote] = useState<string | null>(null)
   const [savingNote, setSavingNote] = useState(false)
   const [dayOffset, setDayOffset] = useState(0)
+  const [awayDays, setAwayDays] = useState<AwayDays>({})
+  const [awayDialogOpen, setAwayDialogOpen] = useState(false)
+  const [savingAway, setSavingAway] = useState(false)
   // Closes the welcome modal immediately rather than waiting for the Firestore
   // snapshot carrying onboardingWelcomeSeen to round-trip.
   const [greetDismissed, setGreetDismissed] = useState(false)
@@ -140,6 +154,13 @@ export default function Dashboard() {
     if (!user) return
     return subscribePlanningDay(effectiveUid, viewISOStr, setPlanning)
   }, [user, effectiveUid, viewISOStr])
+
+  // The whole collection, not just the viewed day: the streak and weekly figures
+  // below need every away day, and there are only ever a handful per year.
+  useEffect(() => {
+    if (!user) return
+    return subscribeAwayDays(effectiveUid, setAwayDays)
+  }, [user, effectiveUid])
 
   // Classes drawn from the saved timetable, for the viewed day's (A/B) week.
   const viewWeek = currentWeek(tt, viewDate)
@@ -269,14 +290,46 @@ export default function Dashboard() {
     }
   }
 
+  /* ---------------- away days ---------------- */
+
+  const awayDates = useMemo(() => awayDateSet(awayDays), [awayDays])
+  const viewAway = awayDays[viewISOStr] ?? null
+  // Marking away only means something for a school day, so the control is offered on
+  // weekdays only — but an existing mark stays editable wherever it was made, so a day
+  // marked by mistake can always be undone.
+  const canMarkAway = canEdit && (viewDayIdx >= 0 || !!viewAway)
+
+  const saveAway = async (reason: AwayReason, note: string) => {
+    if (!user || !canEdit) return
+    setSavingAway(true)
+    try {
+      await markAwayDay(effectiveUid, viewISOStr, reason, note)
+      setAwayDialogOpen(false)
+    } finally {
+      setSavingAway(false)
+    }
+  }
+
+  const removeAway = async () => {
+    if (!user || !canEdit) return
+    setSavingAway(true)
+    try {
+      await clearAwayDay(effectiveUid, viewISOStr)
+      setAwayDialogOpen(false)
+    } finally {
+      setSavingAway(false)
+    }
+  }
+
   /* ---------------- weekly snapshot & achievements ---------------- */
 
-  // Teaching streak — consecutive teaching days with a recorded lesson.
-  const streak = useMemo(() => computeStreak(entries ?? [], tt, now), [entries, tt, now])
+  // Teaching streak — consecutive teaching days with a recorded lesson. Days marked
+  // away are skipped rather than counted as a miss, so illness or leave can't break it.
+  const streak = useMemo(() => computeStreak(entries ?? [], tt, now, awayDates), [entries, tt, now, awayDates])
 
   const snapshot = useMemo(
-    () => buildWeekSnapshot({ entries: entries ?? [], timetable: tt, now, streak }),
-    [entries, tt, now, streak],
+    () => buildWeekSnapshot({ entries: entries ?? [], timetable: tt, now, streak, awayDates }),
+    [entries, tt, now, streak, awayDates],
   )
 
   // Guided onboarding. Progress is derived from real data, so it stays accurate for
@@ -428,6 +481,23 @@ export default function Dashboard() {
               >
                 <ChevronRight size={17} />
               </button>
+              {canMarkAway && (
+                <button
+                  onClick={() => setAwayDialogOpen(true)}
+                  className={`ml-1 flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold transition-colors ${
+                    viewAway
+                      ? 'bg-violet-50 text-violet-700 hover:bg-violet-100'
+                      : 'text-navy-400 hover:bg-navy-50 hover:text-navy-600'
+                  }`}
+                  title={
+                    viewAway
+                      ? 'Change or remove this away day'
+                      : 'Away sick or on leave? Mark the whole day so it doesn’t count against you'
+                  }
+                >
+                  <CalendarOff size={13} /> {viewAway ? 'Away' : 'Mark away'}
+                </button>
+              )}
               <Link
                 to="/app/timetable"
                 className="ml-1 flex items-center gap-1 text-xs font-semibold text-teal-600 hover:text-teal-700"
@@ -436,6 +506,23 @@ export default function Dashboard() {
               </Link>
             </div>
           </div>
+
+          {viewAway && (
+            <div className="mb-4 flex flex-wrap items-start gap-3 rounded-2xl border border-violet-200 bg-violet-50 p-3.5">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-600">
+                <CalendarOff size={16} />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-bold text-violet-900">
+                  Marked away — {awayReasonLabel(viewAway.reason).toLowerCase()}
+                </p>
+                <p className="mt-0.5 text-xs leading-relaxed text-violet-700">
+                  {viewAway.note ? `${viewAway.note} · ` : ''}
+                  This day is set aside: it won’t break your streak or count against your weekly figures.
+                </p>
+              </div>
+            </div>
+          )}
 
           {viewDayIdx < 0 ? (
             <div className="rounded-2xl bg-cloud p-6 text-center text-sm text-navy-500">
@@ -474,6 +561,7 @@ export default function Dashboard() {
                     teaching={isTeachingPeriod(p.label)}
                     recorded={!!cell && recordedForView.has(classKey(cell.subject, cell.className))}
                     recordable={dayOffset < 0 || (isViewingToday && !!time.start && time.start <= nowHHMM)}
+                    away={!!viewAway}
                     recordHref={cell ? recordHref(cell) : '/app/record'}
                     editingNote={editingNote === p.id}
                     savingNote={savingNote}
@@ -519,6 +607,17 @@ export default function Dashboard() {
           )}
         </div>
       </div>
+
+      {awayDialogOpen && (
+        <AwayDayDialog
+          dayLabel={viewDayLabel}
+          existing={viewAway}
+          saving={savingAway}
+          onSave={saveAway}
+          onClear={removeAway}
+          onClose={() => setAwayDialogOpen(false)}
+        />
+      )}
 
       {shouldGreet && user && (
         <WelcomeModal uid={user.uid} firstName={firstName} onClose={() => setGreetDismissed(true)} />

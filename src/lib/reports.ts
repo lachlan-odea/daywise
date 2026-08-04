@@ -3,6 +3,7 @@ import type { Lesson, Program } from './programs'
 import { currentTermIndex, mondayOf, type Timetable, cellKey, currentWeek } from './timetable'
 import { BADGES, computeStats } from './achievements'
 import { classKey } from './classPrograms'
+import { NO_AWAY_DAYS } from './away'
 
 export type ReportPeriod = 'term' | 'ytd'
 
@@ -83,8 +84,19 @@ function activeTerm(tt: Timetable | null, now: Date) {
   return { index: idx, number: idx + 1, start: terms[idx].start, end: terms[idx].end }
 }
 
-/** Calculate the longest streak of consecutive teaching days with entries. */
-export function computeStreak(entries: LessonEntry[], tt: Timetable | null, now: Date): number {
+/**
+ * Calculate the longest streak of consecutive teaching days with entries.
+ *
+ * `awayDates` are the days the teacher marked themselves away (illness, leave — see
+ * src/lib/away.ts). They're skipped exactly like a holiday: they neither break the
+ * run nor extend it, so a week off sick leaves the streak intact.
+ */
+export function computeStreak(
+  entries: LessonEntry[],
+  tt: Timetable | null,
+  now: Date,
+  awayDates: ReadonlySet<string> = NO_AWAY_DAYS,
+): number {
   if (!tt || !tt.periods?.length) return 0
   const hasCalendar = (tt.terms ?? []).some((t) => t?.start && t?.end)
 
@@ -125,6 +137,7 @@ export function computeStreak(entries: LessonEntry[], tt: Timetable | null, now:
   for (let d = new Date(cursor); d <= today; d.setDate(d.getDate() + 1)) {
     const sched = scheduledFor(d)
     if (!sched.length) continue
+    if (awayDates.has(toISO(d))) continue // marked away — neutral, like a holiday
     const rec = recordedByDate.get(toISO(d)) ?? new Set<string>()
     days.push({ iso: toISO(d), hasEntry: rec.size > 0 })
   }
@@ -146,8 +159,10 @@ export function buildOverview(params: {
   timetable: Timetable | null
   now: Date
   period: ReportPeriod
+  /** Days marked away — excluded from the streak and coverage figures. */
+  awayDates?: ReadonlySet<string>
 }): Overview {
-  const { entries, programs, timetable, now, period } = params
+  const { entries, programs, timetable, now, period, awayDates = NO_AWAY_DAYS } = params
   const term = activeTerm(timetable, now)
   const todayISO = toISO(now)
 
@@ -200,7 +215,7 @@ export function buildOverview(params: {
   const daysRemaining = term ? Math.max(0, daysBetween(now, new Date(`${term.end}T00:00:00`))) : null
 
   // KPI: streak (current recording streak)
-  const streak = computeStreak(entries, timetable, now)
+  const streak = computeStreak(entries, timetable, now, awayDates)
 
   // KPI: achievement progress (earned badges / total badges)
   const taught = entries.filter((e) => !e.missed)
@@ -211,6 +226,7 @@ export function buildOverview(params: {
     feedbackCount: 0,
     events: {},
     perpetual: false,
+    awayDates,
   })
   const earnedBadges = BADGES.filter((b) => b.earned(stats)).length
   const achievementProgress = BADGES.length > 0 ? Math.round((earnedBadges / BADGES.length) * 100) : 0

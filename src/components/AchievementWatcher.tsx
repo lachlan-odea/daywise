@@ -5,6 +5,7 @@ import { useProfile } from '../hooks/useProfile'
 import { useToast } from './ToastProvider'
 import { db } from '../lib/firebase'
 import { subscribeEntries, type LessonEntry } from '../lib/entries'
+import { awayDateSet, subscribeAwayDays, type AwayDays } from '../lib/away'
 import { subscribePrograms, getProgram } from '../lib/programs'
 import { subscribeTimetable, type Timetable } from '../lib/timetable'
 import type { LoadedProgram } from '../lib/reports'
@@ -31,6 +32,7 @@ export default function AchievementWatcher() {
   const [entries, setEntries] = useState<LessonEntry[] | null>(null)
   const [programs, setPrograms] = useState<LoadedProgram[] | null>(null)
   const [tt, setTt] = useState<Timetable | null>(null)
+  const [awayDays, setAwayDays] = useState<AwayDays>({})
   const [events, setEvents] = useState<AchievementEvents>({})
   const [granted, setGranted] = useState<string[]>([])
   const [feedbackCount, setFeedbackCount] = useState(0)
@@ -54,6 +56,11 @@ export default function AchievementWatcher() {
   useEffect(() => {
     if (!activeUid) return
     return subscribeTimetable(activeUid, setTt)
+  }, [activeUid])
+
+  useEffect(() => {
+    if (!activeUid) return
+    return subscribeAwayDays(activeUid, setAwayDays)
   }, [activeUid])
 
   useEffect(() => {
@@ -96,6 +103,7 @@ export default function AchievementWatcher() {
       events,
       perpetual: (profile?.plan ?? 'starter') === 'perpetual',
       granted,
+      awayDates: awayDateSet(awayDays),
     })
     const earned = BADGES.filter((b) => isBadgeEarned(b, stats)).map((b) => b.id)
 
@@ -138,7 +146,7 @@ export default function AchievementWatcher() {
       markBadgesNotified(activeUid, fresh).catch(() => {})
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeUid, entries, programs, tt, events, granted, feedbackCount, profile])
+  }, [activeUid, entries, programs, tt, awayDays, events, granted, feedbackCount, profile])
 
   return null
 }

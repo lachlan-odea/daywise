@@ -3,6 +3,7 @@ import { db } from './firebase'
 import type { LessonEntry } from './entries'
 import type { Lesson, Program } from './programs'
 import { classKey } from './classPrograms'
+import { NO_AWAY_DAYS } from './away'
 import { cellKey, currentTermIndex, currentWeek, mondayISO, type Timetable } from './timetable'
 
 export type BadgeCategory = 'consistency' | 'milestones' | 'programs' | 'evidence' | 'community' | 'features' | 'special'
@@ -126,8 +127,14 @@ interface LoadedProgram {
   lessons: Lesson[]
 }
 
-/** Consistency figures derived from the timetable + recorded entries. */
-function completeness(entries: LessonEntry[], tt: Timetable | null) {
+/**
+ * Consistency figures derived from the timetable + recorded entries.
+ *
+ * Days the teacher marked themselves away (see src/lib/away.ts) drop out of the
+ * calculation entirely, exactly like a holiday — so illness or leave can't break a
+ * streak, nor cost a Week Complete / Perfect Month.
+ */
+function completeness(entries: LessonEntry[], tt: Timetable | null, awayDates: ReadonlySet<string>) {
   const blank = { streak: 0, weekComplete: false, perfectMonth: false, perfectTerm: false, perfectYear: false }
   if (!tt || !tt.periods?.length) return blank
   const hasCalendar = (tt.terms ?? []).some((t) => t?.start && t?.end)
@@ -169,6 +176,7 @@ function completeness(entries: LessonEntry[], tt: Timetable | null) {
   for (let d = new Date(cursor); d <= today; d.setDate(d.getDate() + 1)) {
     const sched = scheduledFor(d)
     if (!sched.length) continue // not a teaching day
+    if (awayDates.has(toISO(d))) continue // marked away — the day wasn't theirs to cover
     const rec = recordedByDate.get(toISO(d)) ?? new Set<string>()
     const status = sched.every((k) => rec.has(k)) ? 'complete' : 'partial'
     days.push({ iso: toISO(d), status, hasEntry: rec.size > 0 })
@@ -233,8 +241,10 @@ export function computeStats(params: {
   events: AchievementEvents
   perpetual: boolean
   granted?: string[]
+  /** Days marked away — excluded from the consistency figures. */
+  awayDates?: ReadonlySet<string>
 }): Stats {
-  const { entries, programs, timetable, feedbackCount, events, perpetual, granted = [] } = params
+  const { entries, programs, timetable, feedbackCount, events, perpetual, granted = [], awayDates = NO_AWAY_DAYS } = params
   // Missed lessons count toward coverage (completeness) but not as taught lessons.
   const taught = entries.filter((e) => !e.missed)
 
@@ -269,7 +279,7 @@ export function computeStats(params: {
     }
   }
 
-  const cons = completeness(entries, timetable)
+  const cons = completeness(entries, timetable, awayDates)
 
   return {
     lessons: taught.length,

@@ -1,3 +1,4 @@
+import { NO_AWAY_DAYS } from './away'
 import type { LessonEntry } from './entries'
 import type { Lesson, Program } from './programs'
 import { unitLabel } from './programs'
@@ -201,13 +202,15 @@ export const MINUTES_SAVED_PER_LESSON = 12
 export const MINUTES_SAVED_PER_EVIDENCE = 8
 
 export interface WeekSnapshot {
-  /** Teaching classes timetabled Mon–Fri this week. */
+  /** Teaching classes timetabled Mon–Fri this week, excluding days marked away. */
   scheduled: number
   taught: number
   remaining: number
   evidence: number
   minutesSaved: number
   streak: number
+  /** Days this week the teacher marked themselves away. */
+  away: number
 }
 
 export const hasEvidence = (e: LessonEntry) =>
@@ -222,8 +225,15 @@ export const hasEvidence = (e: LessonEntry) =>
     e.outcomes?.length
   )
 
-/** How many teaching classes the timetable schedules across the week containing `now`. */
-export function scheduledThisWeek(tt: Timetable | null, now: Date): number {
+/**
+ * How many teaching classes the timetable schedules across the week containing `now`.
+ * Days marked away are left out — they aren't lessons the teacher failed to record.
+ */
+export function scheduledThisWeek(
+  tt: Timetable | null,
+  now: Date,
+  awayDates: ReadonlySet<string> = NO_AWAY_DAYS,
+): number {
   if (!tt?.periods?.length) return 0
   const hasCalendar = (tt.terms ?? []).some((t) => t?.start && t?.end)
   const monday = mondayOf(now)
@@ -231,8 +241,9 @@ export function scheduledThisWeek(tt: Timetable | null, now: Date): number {
   for (let day = 0; day < 5; day++) {
     const date = new Date(monday)
     date.setDate(date.getDate() + day)
-    // Holidays and pupil-free weeks shouldn't inflate the denominator.
+    // Holidays, pupil-free weeks and days away shouldn't inflate the denominator.
     if (hasCalendar && currentTermIndex(tt, date) < 0) continue
+    if (awayDates.has(toISO(date))) continue
     const week = currentWeek(tt, date)
     for (const p of tt.periods) {
       if (!isTeachingPeriod(p.label)) continue
@@ -248,8 +259,9 @@ export function buildWeekSnapshot(params: {
   timetable: Timetable | null
   now: Date
   streak: number
+  awayDates?: ReadonlySet<string>
 }): WeekSnapshot {
-  const { entries, timetable, now, streak } = params
+  const { entries, timetable, now, streak, awayDates = NO_AWAY_DAYS } = params
   const monday = mondayOf(now)
   const sunday = new Date(monday)
   sunday.setDate(sunday.getDate() + 6)
@@ -260,7 +272,16 @@ export function buildWeekSnapshot(params: {
   // Missed lessons were logged, but nothing was taught — they don't count here.
   const taught = week.filter((e) => !e.missed).length
   const evidence = week.filter(hasEvidence).length
-  const scheduled = scheduledThisWeek(timetable, now)
+  const scheduled = scheduledThisWeek(timetable, now, awayDates)
+
+  // Away days are counted Mon–Fri only, to match the school week the rest of the
+  // snapshot measures.
+  let away = 0
+  for (let day = 0; day < 5; day++) {
+    const date = new Date(monday)
+    date.setDate(date.getDate() + day)
+    if (awayDates.has(toISO(date))) away++
+  }
 
   return {
     scheduled,
@@ -269,6 +290,7 @@ export function buildWeekSnapshot(params: {
     evidence,
     minutesSaved: taught * MINUTES_SAVED_PER_LESSON + evidence * MINUTES_SAVED_PER_EVIDENCE,
     streak,
+    away,
   }
 }
 

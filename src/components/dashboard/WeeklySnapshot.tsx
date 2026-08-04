@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { BarChart3, BookOpen, CalendarCheck, ChevronRight, Clock, Flame, ShieldCheck } from 'lucide-react'
+import { BarChart3, BookOpen, CalendarCheck, CalendarOff, ChevronRight, Clock, Flame, ShieldCheck } from 'lucide-react'
 import { formatDuration, type WeekSnapshot } from '../../lib/dashboard'
 
 /**
@@ -21,6 +21,7 @@ const FILL = {
   banked: 'bg-teal-500',
   remaining: 'bg-navy-300',
   streak: 'bg-amber-600',
+  away: 'bg-violet-400',
 }
 
 function Row({
@@ -77,7 +78,7 @@ function Row({
  * numbers mean something — rather than a bare count with nothing to measure it by.
  */
 export default function WeeklySnapshot({ snapshot }: { snapshot: WeekSnapshot }) {
-  const { scheduled, taught, remaining, evidence, minutesSaved, streak } = snapshot
+  const { scheduled, taught, remaining, evidence, minutesSaved, streak, away } = snapshot
   const outOf = scheduled > 0 ? `of ${scheduled}` : undefined
   const share = (n: number) => (scheduled > 0 ? n / scheduled : null)
 
@@ -122,6 +123,19 @@ export default function WeeklySnapshot({ snapshot }: { snapshot: WeekSnapshot })
           fill={FILL.banked}
           progress={minutesSaved / TIME_SAVED_TARGET_MINUTES}
         />
+        {/* Only shown when it applies — a permanent "0 days away" row would read as
+            a target to hit. The lessons on those days are already out of the counts
+            above, so this row explains a lower "of N" rather than adding to it. */}
+        {away > 0 && (
+          <Row
+            icon={<CalendarOff size={14} />}
+            label="Days away"
+            value={`${away} day${away === 1 ? '' : 's'}`}
+            suffix="Not counted"
+            fill={FILL.away}
+            progress={null}
+          />
+        )}
         <Row
           icon={<Flame size={14} />}
           label="Teaching streak"

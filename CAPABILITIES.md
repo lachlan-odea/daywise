@@ -109,7 +109,8 @@ the model.
 - Can pre-fill subject/class/date when launched from the History day view.
 - **Mark as missed** — record a class as a missed/cancelled lesson (optional reason). Missed lessons
   count toward **coverage** (so they don't break a Perfect Week/Month/Term/Year) but are **not**
-  counted as taught lessons in milestones, program progress, or the reports.
+  counted as taught lessons in milestones, program progress, or the reports. To set aside a *whole*
+  day (illness, leave), mark the day as **away** from the Dashboard instead — see §13.
 - Saves to the searchable diary (`users/{uid}/entries`).
 
 ### 7. Diary (teaching diary)
@@ -179,6 +180,15 @@ the model.
   that opens Record Lesson pre-filled; once recorded it shows "Recorded".
 - **Planning notes** — add/edit a quick planning note per class on today's timetable (saved per
   day, `users/{uid}/planning/{date}`); a saved note shows inline under the class.
+- **Mark a day away** — one click in the daybook header marks the whole day as away (sick leave,
+  carer's leave, personal/other leave, professional learning, other, plus an optional note),
+  stored one doc per date at `users/{uid}/awayDays/{yyyy-mm-dd}`. An away day is treated exactly
+  like a holiday: it can't break the **teaching streak**, and it drops out of the weekly figures
+  and the Week Complete / Perfect Month / Term / Year coverage badges. The day shows an "Away"
+  banner, its classes swap the amber "Not recorded" nudge for a muted "Away" chip (still
+  recordable, e.g. what a relief teacher covered), and the weekly snapshot adds a "Days away" row.
+  Unmarking is a single click ("I wasn't away"). Also honoured by the Diary calendar (violet dot
+  instead of a red "none recorded") and by the weekly reminder email's streak line.
 - Suggested next steps (from the last entry) and running stats.
 - "Upload your first program" prompt shown only until a program exists.
 
@@ -256,6 +266,18 @@ the model.
 ## Changelog (closed beta, pre-v0.1)
 
 _Newest first. Each entry corresponds to work pushed to `main`._
+
+### 2026-08-05
+- **Mark a whole day as away** — from the Dashboard daybook header, mark a day as away (sick leave,
+  carer's leave, personal/other leave, professional learning, other + optional note). Away days are
+  treated like holidays everywhere the app judges consistency: the **teaching streak** steps over
+  them instead of resetting, they leave the weekly scheduled/remaining counts, and they don't cost
+  a Week Complete / Perfect Month / Perfect Term / Perfect Year badge. The day gets an "Away"
+  banner and muted (still clickable) "Away" chips in place of "Not recorded", the weekly snapshot
+  gains a "Days away" row, the Diary calendar shows a violet "Away" dot instead of a red "none
+  recorded" one, and the weekly reminder email's streak line agrees with the app. Stored one doc
+  per date at `users/{uid}/awayDays/{yyyy-mm-dd}` — no `firestore.rules` change needed (the
+  existing recursive wildcard under `/users/{uid}` already covers it).
 
 ### 2026-08-04 (later)
 - **Class sharing, Phase 1 (read-only)** — share a class with other teachers by email invite.
