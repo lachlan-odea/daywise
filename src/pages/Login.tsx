@@ -78,9 +78,13 @@ export default function Login() {
             <label htmlFor="password" className="block text-sm font-semibold text-navy-800">
               Password
             </label>
-            <a href="#" className="text-xs font-semibold text-teal-600 hover:text-teal-700">
+            <Link
+              to="/forgot-password"
+              state={{ email }}
+              className="text-xs font-semibold text-teal-600 hover:text-teal-700"
+            >
               Forgot password?
-            </a>
+            </Link>
           </div>
           <div className="relative">
             <input

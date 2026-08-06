@@ -5,6 +5,7 @@ import {
   signInWithEmailAndPassword,
   signInWithPopup,
   sendEmailVerification,
+  sendPasswordResetEmail,
   signOut,
   updateProfile,
   updatePassword,
@@ -36,6 +37,8 @@ interface AuthContextValue {
   stopImpersonation: () => void
   signUpWithEmail: (name: string, email: string, password: string) => Promise<void>
   signInWithEmail: (email: string, password: string) => Promise<void>
+  /** Emails a password-reset link (Firebase's hosted reset flow). */
+  resetPassword: (email: string) => Promise<void>
   signInWithGoogle: () => Promise<void>
   signInWithMicrosoft: () => Promise<void>
   logout: () => Promise<void>
@@ -164,6 +167,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await upsertUserProfile(cred.user)
   }
 
+  const resetPassword = async (email: string) => {
+    await sendPasswordResetEmail(requireAuth(), email)
+  }
+
   const signInWithProvider = async (provider: FirebaseAuthProvider) => {
     const cred = await signInWithPopup(requireAuth(), provider)
     await upsertUserProfile(cred.user)
@@ -202,6 +209,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     stopImpersonation,
     signUpWithEmail,
     signInWithEmail,
+    resetPassword,
     signInWithGoogle: () => signInWithProvider(googleProvider),
     signInWithMicrosoft: () => signInWithProvider(microsoftProvider),
     logout: () => (auth ? signOut(auth) : Promise.resolve()),
@@ -241,6 +249,8 @@ export function authErrorMessage(err: unknown): string {
       return 'You’ve already signed up with a different method for this email.'
     case 'auth/too-many-requests':
       return 'Too many attempts. Please wait a moment and try again.'
+    case 'auth/missing-email':
+      return 'Please enter your email address.'
     case 'auth/operation-not-allowed':
       return 'This sign-in method isn’t enabled yet in Firebase.'
     case 'auth/requires-recent-login':

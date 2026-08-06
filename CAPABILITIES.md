@@ -44,6 +44,10 @@ the model.
 ### 2. Authentication & accounts
 - Firebase Authentication: **email/password, Google, and Microsoft** sign-in.
 - Branded Login / Sign-up pages; friendly error handling.
+- **Forgot password** (`/forgot-password`) — emails a reset link via Firebase’s hosted flow. The
+  address typed on the sign-in form carries over. The confirmation is deliberately identical
+  whether or not an account exists, so the page can’t be used to discover who has a daywise
+  account.
 - Protected `/app` area behind auth, inside a shared app shell (sidebar + topbar + profile menu).
 - Firebase App Check (reCAPTCHA v3) protecting Gemini/Firestore/Auth.
 - **Settings** (in the profile menu):
@@ -268,6 +272,10 @@ the model.
 _Newest first. Each entry corresponds to work pushed to `main`._
 
 ### 2026-08-05
+- **Forgot password now works** — the link on the sign-in screen was a dead `href="#"`. It now
+  opens a `/forgot-password` page that emails a Firebase reset link, carrying over whatever
+  address was already typed on the sign-in form. Unknown addresses get exactly the same
+  confirmation as known ones, so the page can’t be used to work out who has a daywise account.
 - **Mark a whole day as away** — from the Dashboard daybook header, mark a day as away (sick leave,
   carer's leave, personal/other leave, professional learning, other + optional note). Away days are
   treated like holidays everywhere the app judges consistency: the **teaching streak** steps over
