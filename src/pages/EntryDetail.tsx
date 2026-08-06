@@ -186,19 +186,44 @@ export default function EntryDetail() {
     if (!user || !id || !entry || !draft) return
     setSaving(true)
     try {
+      const outcomes = draft.outcomes.map((s) => s.trim()).filter(Boolean)
+      const nextSteps = draft.evidence.nextSteps.map((s) => s.trim()).filter(Boolean)
+      const prev = entry.evidence
+
+      /*
+       * Only the six fields on this form are edited here — but `evidence` is written as
+       * a whole map, so anything omitted would be deleted. The v6.5 groups (outcome
+       * connections, HPGE, APST, curriculum links, action reasons) aren't editable on
+       * this page, so they're carried through explicitly rather than dropped.
+       */
+      const keep = new Set(outcomes.map((c) => c.toLowerCase()))
+      const inKeep = <T extends { code: string }>(rows?: T[]) =>
+        rows?.filter((r) => keep.has(r.code.trim().toLowerCase()))
+
       const patch = {
         date: draft.date,
         subject: draft.subject.trim(),
         className: draft.className.trim(),
         room: draft.room.trim() || undefined,
         note: draft.note.trim(),
-        outcomes: draft.outcomes.map((s) => s.trim()).filter(Boolean),
+        outcomes,
         evidence: {
+          ...prev,
           annotations: draft.evidence.annotations.trim(),
           assessmentEvidence: draft.evidence.assessmentEvidence.trim(),
           differentiation: draft.evidence.differentiation.trim(),
           reflection: draft.evidence.reflection.trim(),
-          nextSteps: draft.evidence.nextSteps.map((s) => s.trim()).filter(Boolean),
+          nextSteps,
+          // An action's reason survives only while its text is untouched; an edited or
+          // newly added action keeps the action and loses a reason that no longer fits.
+          nextActions: nextSteps.map((action) => {
+            const reason = prev?.nextActions?.find((a) => a.action === action)?.reason
+            return reason ? { action, reason } : { action }
+          }),
+          outcomeConnections: inKeep(prev?.outcomeConnections),
+          curriculumLinks: prev?.curriculumLinks
+            ? { ...prev.curriculumLinks, outcomes: inKeep(prev.curriculumLinks.outcomes) }
+            : undefined,
         },
       }
       await updateEntry(effectiveUid, id, patch)
@@ -384,22 +409,103 @@ export default function EntryDetail() {
                   </span>
                 ))}
               </div>
+              {/* How the lesson connected to each outcome (v6.5 and later). */}
+              {!!ev.outcomeConnections?.length && (
+                <ul className="mt-2 space-y-1.5">
+                  {ev.outcomeConnections.map((o, i) => (
+                    <li key={i} className="rounded-lg bg-cloud px-3 py-2 text-xs leading-relaxed text-navy-600">
+                      <b className="text-navy-800">{o.code}</b>
+                      {o.description ? ` — ${o.description}` : ''}
+                      {o.connection ? <span className="mt-0.5 block text-navy-500">{o.connection}</span> : null}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           )}
           <Section label="Program annotation" text={ev.annotations} />
           <Section label="Assessment evidence" text={ev.assessmentEvidence} />
           <Section label="Differentiation" text={ev.differentiation} />
           <Section label="Reflection" text={ev.reflection} />
+          {/* HPGE and APST arrived with Curriculum Intelligence v6.5, so entries
+              recorded before it simply have nothing here. */}
+          {!!ev.hpgeOpportunities?.length && (
+            <div>
+              <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-navy-400">HPGE opportunities</p>
+              <ul className="space-y-1.5">
+                {ev.hpgeOpportunities.map((h, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm text-navy-700">
+                    <span
+                      className={`mt-0.5 shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+                        h.type === 'observed' ? 'bg-teal-50 text-teal-700' : 'bg-navy-50 text-navy-500'
+                      }`}
+                    >
+                      {h.type === 'observed' ? 'Observed' : 'Suggested'}
+                    </span>
+                    <span>
+                      <b className="capitalize text-navy-800">{h.domain}</b> — {h.description}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {!!ev.teachingStandards?.length && (
+            <div>
+              <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-navy-400">
+                Teaching standards (APST)
+              </p>
+              <ul className="space-y-1.5">
+                {ev.teachingStandards.map((s, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm text-navy-700">
+                    <span className="mt-0.5 shrink-0 rounded-md bg-sky-50 px-1.5 py-0.5 text-[10px] font-bold text-sky-700">
+                      {s.focusArea}
+                    </span>
+                    <span>
+                      {s.title && <b className="text-navy-800">{s.title}</b>}
+                      {s.title && s.connection ? ' — ' : ''}
+                      {s.connection}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {(ev.curriculumLinks?.programPosition || !!ev.curriculumLinks?.syllabusContent?.length) && (
+            <div>
+              <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-navy-400">Curriculum links</p>
+              {ev.curriculumLinks?.programPosition && (
+                <p className="text-sm font-semibold text-navy-800">{ev.curriculumLinks.programPosition}</p>
+              )}
+              {!!ev.curriculumLinks?.syllabusContent?.length && (
+                <ul className="mt-1 space-y-1">
+                  {ev.curriculumLinks.syllabusContent.map((s, i) => (
+                    <li key={i} className="text-xs leading-relaxed text-navy-500">
+                      • {s}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
           {ev.nextSteps?.length > 0 && (
             <div>
               <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-navy-400">Next lesson actions</p>
-              <ul className="space-y-1">
-                {ev.nextSteps.map((s, i) => (
-                  <li key={i} className="flex gap-2 text-sm text-navy-700">
-                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-teal-400" />
-                    {s}
-                  </li>
-                ))}
+              <ul className="space-y-1.5">
+                {ev.nextSteps.map((s, i) => {
+                  // v6.5 pairs each action with the evidence behind it; older entries
+                  // have the action text only.
+                  const reason = ev.nextActions?.find((a) => a.action === s)?.reason
+                  return (
+                    <li key={i} className="flex gap-2 text-sm text-navy-700">
+                      <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-teal-400" />
+                      <span>
+                        {s}
+                        {reason ? <span className="mt-0.5 block text-xs text-navy-400">{reason}</span> : null}
+                      </span>
+                    </li>
+                  )
+                })}
               </ul>
             </div>
           )}

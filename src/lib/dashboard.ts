@@ -1,5 +1,5 @@
 import { NO_AWAY_DAYS } from './away'
-import type { LessonEntry } from './entries'
+import { entryHasEvidence, type LessonEntry } from './entries'
 import type { Lesson, Program } from './programs'
 import { unitLabel } from './programs'
 import { cellKey, currentTermIndex, currentWeek, mondayOf, type ClassCell, type Timetable } from './timetable'
@@ -213,17 +213,8 @@ export interface WeekSnapshot {
   away: number
 }
 
-export const hasEvidence = (e: LessonEntry) =>
-  !e.missed &&
-  !!e.evidence &&
-  !!(
-    e.evidence.annotations ||
-    e.evidence.assessmentEvidence ||
-    e.evidence.differentiation ||
-    e.evidence.reflection ||
-    e.evidence.nextSteps?.length ||
-    e.outcomes?.length
-  )
+/** A taught lesson carrying evidence. See entryHasEvidence for what counts. */
+export const hasEvidence = (e: LessonEntry) => !e.missed && entryHasEvidence(e)
 
 /**
  * How many teaching classes the timetable schedules across the week containing `now`.

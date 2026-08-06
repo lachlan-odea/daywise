@@ -35,6 +35,7 @@ the model.
 ## Capabilities
 
 ### 1. Marketing website (public)
+
 - Full landing page: hero, "built for real classrooms" trust bar, problem, how-it-works,
   feature grid, product showcases, stats, testimonials, pricing, FAQ, and CTA.
 - Brand identity: daywise mark + wordmark (light/dark), "Teach. Talk. Done." tagline.
@@ -42,11 +43,12 @@ the model.
 - CTAs route into sign-up.
 
 ### 2. Authentication & accounts
+
 - Firebase Authentication: **email/password, Google, and Microsoft** sign-in.
 - Branded Login / Sign-up pages; friendly error handling.
-- **Forgot password** (`/forgot-password`) — emails a reset link via Firebase’s hosted flow. The
+- **Forgot password** (`/forgot-password`) — emails a reset link via Firebase's hosted flow. The
   address typed on the sign-in form carries over. The confirmation is deliberately identical
-  whether or not an account exists, so the page can’t be used to discover who has a daywise
+  whether or not an account exists, so the page can't be used to discover who has a daywise
   account.
 - Protected `/app` area behind auth, inside a shared app shell (sidebar + topbar + profile menu).
 - Firebase App Check (reCAPTCHA v3) protecting Gemini/Firestore/Auth.
@@ -59,6 +61,7 @@ the model.
 - Per-user profile stored in Firestore (`users/{uid}`).
 
 ### 3. Plans & entitlements
+
 - Plans: **Starter** (free), **Teacher Pro**, **Faculty & School**, and **Perpetual**
   ("Founding Teacher" — complimentary lifetime access for pilot teachers).
 - Plan set on the user's Firestore profile (`plan`), including `perpetual` for pilot users.
@@ -66,6 +69,7 @@ the model.
 - Sidebar plan indicator (Starter shows "Upgrade"; Perpetual shows a crown "Founding Teacher" badge).
 
 ### 4. Timetable
+
 - Weekly grid editor: periods (label + times) and per-cell classes (subject, class, room, colour).
 - Each cell can be marked **Class** or **Meeting**; meetings show on the grid (tagged) but are
   **not recordable** — excluded from Record quick-pick, dashboard Record buttons, the diary's
@@ -87,6 +91,7 @@ the model.
   - Review step with a **drag-and-drop editable preview** before import.
 
 ### 5. Programs (Curriculum Intelligence)
+
 - Upload teaching programs (PDF / Word / Excel); AI extracts each lesson with outcomes,
   learning intentions, success criteria, activities, resources, keywords, and assessment.
 - Program classification: **structure** (Lessons or Modules/Weeks) and **term** (full year or a
@@ -97,14 +102,41 @@ the model.
 - Programs list with grouped **views by Subject / Stage / Term** (defaults to Term).
 
 ### 6. Record Lesson (core loop)
+
 - Capture a lesson by **voice** (browser speech-to-text) or **text**; quick-pick today's class
   from the timetable.
 - AI matches the recording to the most likely program lesson and generates professional evidence
-  using the **Curriculum Intelligence v2.0 "scribe, not witness"** prompt: program annotation,
-  assessment evidence, differentiation, reflection, next-lesson actions, and outcomes, with a
-  confidence rating.
-- Student names are anonymised in evidence as **first name + surname initial** (e.g. "Lachlan O").
-- **Class → program linking:** matching is scoped to the program(s) a *class* follows, not just
+  using the **Curriculum Intelligence v6.5** prompt (`src/lib/aiRecord.ts`), built on five
+  principles — record, interpret, connect, support, protect — and an extensive set of evidence
+  boundaries: participation is never converted into understanding, completion never into
+  achievement, resource use never into resource effectiveness, and a future plan never into
+  completed teaching. A sparse recap deliberately produces a sparse record.
+- Generated fields: **outcomes** (each with the official descriptor and how the lesson connected to
+  it), **program annotation**, **assessment evidence**, **differentiation**, **HPGE opportunities**
+  (intellectual / creative / social-emotional / physical, each marked observed or recommended),
+  **teaching standards** (APST focus areas, max 3, high evidence threshold with hard rules for 3.2
+  and 1.6), **curriculum links** (program position, relevant syllabus content, outcomes),
+  **reflection**, and **2–4 next-lesson actions each with the evidence-based reason for it** — plus
+  the matched lesson and a confidence rating.
+- When a lesson recorded no assessment evidence or no differentiation, the field says so in fixed
+  wording rather than being left blank; those two sentences are defined once
+  (`NO_ASSESSMENT_EVIDENCE_RECORDED` / `NO_DIFFERENTIATION_RECORDED` in `src/lib/entries.ts`),
+  interpolated into the prompt, and **not counted as evidence** by the evidence KPIs or badges.
+- **Your planning note for the class is fed in as context** (from `users/{uid}/planning/{date}`).
+  A retrospective note ("the video worked better than the worksheet") counts as lesson evidence in
+  its own right; a forward-looking one ("prepare the ramp prac") only informs next-lesson actions.
+  The compose step tells you when a note will be included.
+- **Student names are removed entirely** — no names in any output field, and individual detail is
+  generalised to class or group level ("additional adult support was provided where required"). The
+  prompt also avoids re-identification by refusing to build a sequence of unnamed learner profiles
+  ("one student… another student…"). You can still speak names freely; they don't reach the record.
+  ⚠ This replaced v2.0's first-name-plus-initial anonymisation, so evidence generated before
+  2026-08-07 may still contain "Lachlan O"-style names.
+- The review step shows everything before saving: text fields are editable, next actions and their
+  reasons are editable, HPGE and APST claims can be individually removed (you shouldn't have to
+  save a claim you don't accept), and curriculum links are shown for confirmation only since
+  they're copied from your program rather than inferred.
+- **Class → program linking:** matching is scoped to the program(s) a _class_ follows, not just
   its subject. The first time you record for a class, you confirm which program(s) it follows
   (pre-suggested by subject) and it's remembered (`users/{uid}/meta/classPrograms`); later
   recordings match only within that class's programs. Falls back to subject match if unlinked.
@@ -113,11 +145,12 @@ the model.
 - Can pre-fill subject/class/date when launched from the History day view.
 - **Mark as missed** — record a class as a missed/cancelled lesson (optional reason). Missed lessons
   count toward **coverage** (so they don't break a Perfect Week/Month/Term/Year) but are **not**
-  counted as taught lessons in milestones, program progress, or the reports. To set aside a *whole*
+  counted as taught lessons in milestones, program progress, or the reports. To set aside a _whole_
   day (illness, leave), mark the day as **away** from the Dashboard instead — see §13.
 - Saves to the searchable diary (`users/{uid}/entries`).
 
 ### 7. Diary (teaching diary)
+
 - Navigation label is **Diary** (route `/app/history`).
 - **Planning notes** per class on any day (past or upcoming) — add/edit inline from the day view;
   shared with the dashboard's notes (same `users/{uid}/planning/{date}` store). A class's note also
@@ -133,15 +166,18 @@ the model.
   outcomes, and all evidence fields).
 
 ### 8. Global search
+
 - ⌘K / Ctrl+K command palette across **programs, lessons, timetable classes, and diary entries**;
   results deep-link (including straight to a specific lesson).
 
 ### 9. Feedback
+
 - In-app **Feedback** button (topbar) capturing the current page/module, type, and message.
 - Stored in Firestore and pushed to a **Google Sheet** (Apps Script), which creates a **Trello
   card** per submission.
 
 ### 10. Notifications & admin
+
 - **In-app announcements** — a broadcast shown to every signed-in user in the header
   **notification bell** (unread badge, per-user "mark as read", newest first).
 - **Weekly progress email** — a Friday-afternoon (AU) reminder emailing each teacher their
@@ -161,10 +197,12 @@ the model.
     Settings gating); no backend/impersonation tokens involved. For beta diagnosis.
 
 ### 11. Progressive Web App
+
 - Installable PWA scoped to the app (`/app`) — launches into the dashboard, with app icons and an
   offline service worker.
 
 ### 12. Data & Reports (Teaching Overview)
+
 - **Teaching Overview** dashboard with a **This Term / Year to Date** toggle.
 - **KPI cards:** lessons taught, days remaining in term, evidence entries, programs active, lessons
   this week, outcomes covered, classes taught, last recorded.
@@ -173,10 +211,15 @@ the model.
 - **Teaching Timeline:** bar chart of lessons recorded per week across the current term.
 - **Upcoming Focus:** flags programs needing attention (no recent lesson, nearing completion,
   complete).
-- **Quick Reports:** Evidence Register (CSV), Program Report (CSV), and Term Summary (print).
+- **Quick Reports:** Evidence Register (CSV), Program Report (CSV), and Term Summary (print). The
+  Evidence Register carries the full Curriculum Intelligence record per lesson — program position,
+  outcomes and how each was connected, annotation, assessment evidence, differentiation, HPGE
+  opportunities, APST focus areas, syllabus content, reflection, and each next action paired with
+  the reason for it.
 - All figures derive from recorded diary entries, programs and the term calendar.
 
 ### 13. Dashboard
+
 - Time-of-day greeting; term/week (or "Holidays") pill linking to the timetable.
 - Today's timetable (live A/B week) showing **all periods** including breaks/free periods;
   the current period is highlighted "Now".
@@ -199,6 +242,7 @@ the model.
 ---
 
 ### 14. Achievements (gamification)
+
 - **Achievement Badges** page (profile menu) that awards badges automatically from teaching
   activity, across categories: Consistency (streaks, week/month/term/year completeness),
   Milestones (10→1000 lessons), Programs (started/completed/five/outcome coverage), Evidence
@@ -215,6 +259,7 @@ the model.
   (per-user notifications, `users/{uid}/notifications`).
 
 ### 15. Classes
+
 - **My Classes** page (`/app/classes`, nav item between Timetable and Programs) — set up each class
   you teach: name, subject, class code, year group, room, colour and icon (the icon is picked
   automatically from the subject, or choose your own).
@@ -225,9 +270,9 @@ the model.
   one-click setup (pre-filled subject/code/room/colour, with a guessed year group), and each class
   shows its weekly schedule (e.g. "Mon 1, Tue 2"; fortnightly slots get a Wk A/B suffix).
 - **Class page** (`/app/classes/:id`) with Overview / Programs / Notes tabs (Analytics and
-  Resources marked *Soon*; a Shared-with-Me tab on the list page is also *Soon*):
+  Resources marked _Soon_; a Shared-with-Me tab on the list page is also _Soon_):
   - **Overview** — current program with progress bar (distinct recorded lessons ÷ lesson count),
-    a class details card, a curriculum card (syllabus linking marked *Soon*), analytics tiles
+    a class details card, a curriculum card (syllabus linking marked _Soon_), analytics tiles
     scoped to the current term (lessons
     recorded, program coverage, distinct outcomes, reflections), a **learning timeline** ticking
     off the current program's lessons as they're recorded, and quick actions (assign program,
@@ -258,6 +303,7 @@ the model.
     recordings, ownership transfer when an owner deletes their account.
 
 ## Planned / not yet built
+
 - Student-level records and reporting (the class page's Students tab is deliberately not built yet).
 - Class sharing Phase 2+: member contribution (shared notes/details edits), an activity feed of
   sanitized lesson summaries, multi-teacher class analytics, live program sync, and ownership
@@ -271,11 +317,71 @@ the model.
 
 _Newest first. Each entry corresponds to work pushed to `main`._
 
+### 2026-08-07
+
+- **Curriculum Intelligence upgraded from v2.0 to v6.5** (`src/lib/aiRecord.ts`). The prompt grows
+  from ~60 lines to ~1,750, organised around five principles (record, interpret, connect, support,
+  protect) with explicit boundaries: participation is never converted into understanding, completion
+  never into achievement, resource use never into effectiveness, a future plan never into completed
+  teaching, and a sparse recap deliberately yields a sparse record (word ceilings included).
+- **Three new evidence groups** are generated, stored and shown: **HPGE opportunities** (four
+  domains, each marked observed or recommended), **teaching standards** (APST focus areas, max 3,
+  with hard rules that stop 3.2 being claimed for merely following a program and 1.6 for merely
+  having an SLSO present), and **curriculum links** (program position, relevant syllabus content,
+  outcomes). Outcomes now carry the official descriptor and an explanation of how the lesson
+  connected to them; next actions now carry the evidence-based reason for each.
+- **Planning notes are now fed to the AI** as v6.5's `teacher_notes`, so a retrospective note counts
+  as lesson evidence and a forward-looking one informs next actions. The compose step says when a
+  note will be included. Program lesson content (intentions, criteria, activities, resources,
+  assessment) and each lesson's position in its program are supplied as curriculum context too.
+- **Student names are no longer written into evidence at all** — v6.5 generalises individual detail
+  to class or group level and refuses to build unnamed learner profiles. This replaces v2.0's
+  first-name-plus-initial anonymisation; evidence generated earlier may still contain names.
+- Two fields were added to the v6.5 schema for daywise (`matched_lesson_id`, `confidence`) via a
+  clearly marked addendum: the base prompt asks for neither, but program position, progress bars,
+  program-completion badges and the outcome-scoping rule all depend on knowing which lesson was
+  taught. The base text is otherwise verbatim so it stays diffable against the source document.
+- Safety rules are enforced **in code**, not just asked for: outcomes stay tied to the matched
+  lesson, `curriculum_links.outcomes` can't name an outcome absent from `outcomes`, APST entries must
+  be real focus-area numbers, HPGE domains must come from the fixed list, an opportunity is only
+  "observed" if it says so, and program position is filled from our own data rather than the model's.
+- `maxOutputTokens` raised 4096 → 16384. v6.5 returns far more per lesson and Gemini 2.5 draws its
+  thinking tokens from the same budget, so the old ceiling would have truncated the JSON mid-object
+  and surfaced as "The AI response could not be read".
+- `hasEvidence` was duplicated in three files with slightly different field lists; it's now one
+  `entryHasEvidence` in `src/lib/entries.ts`, and it treats the two "nothing was recorded" fallback
+  sentences as _absence_ of evidence rather than presence.
+- Fixed a latent data-loss bug in the Diary: editing an entry rewrote the whole `evidence` map from
+  the six fields on that form, so it would have silently deleted the new groups. They're now carried
+  through, and an action's reason survives only while its wording is untouched.
+- Evidence Register CSV and ⌘K search extended to cover all of the above.
+
 ### 2026-08-05
+
 - **Forgot password now works** — the link on the sign-in screen was a dead `href="#"`. It now
   opens a `/forgot-password` page that emails a Firebase reset link, carrying over whatever
   address was already typed on the sign-in form. Unknown addresses get exactly the same
-  confirmation as known ones, so the page can’t be used to work out who has a daywise account.
+  confirmation as known ones, so the page can't be used to work out who has a daywise account.
+- **Fixed: the Diary opened on a seemingly random date instead of today.** On first load it jumped
+  to `entries[0].date` — but entries are ordered by `createdAt`, not by `date`, so that was the date
+  _field_ of the most recently _created_ entry. The two diverge whenever a lesson is backfilled,
+  dated ahead, or has its date edited later, leaving the calendar on a date unrelated to today.
+  Teachers who only ever record same-day never saw it, which is why it looked random and hit only
+  some users. The Diary now opens on today and stays there; the month's coverage dots already show
+  where the recorded lessons are, and the **Today** button still resets month + selection.
+- **Coming-soon waitlist capture now works.** The Apps Script web app is deployed and its `/exec`
+  URL is wired into `WAITLIST_ENDPOINT`, so signups actually land in the Sheet. Verified end to end
+  against the live endpoint: a signup returns `{ok:true}`, a repeat returns `{ok:true,duplicate:true}`
+  with no second row, and invalid/oversized/missing emails are rejected. Both hops of the Apps
+  Script redirect send `access-control-allow-origin: *`, so the response IS readable from the page —
+  the note in `FEEDBACK_SETUP.md` claiming Apps Script sends no CORS headers is out of date.
+  Delivery is now two-step: read the JSON reply and report what it says, but if a fetch rejects
+  before any response can be inspected, re-send with `mode:'no-cors'` and treat it as delivered
+  (the `.gs` ignores duplicates, so the resend can't double up). Anything readable — an HTTP error,
+  `{ok:false}`, a non-JSON error page — is the final answer and is never retried blind.
+  ⚠ The live page at daywise.au is deployed from the separate `lachlan-odea/daywise-coming-soon`
+  repo and still runs the superseded Firestore-REST version, whose writes 403; this fix is not live
+  until the file is copied across.
 - **Mark a whole day as away** — from the Dashboard daybook header, mark a day as away (sick leave,
   carer's leave, personal/other leave, professional learning, other + optional note). Away days are
   treated like holidays everywhere the app judges consistency: the **teaching streak** steps over
@@ -288,6 +394,7 @@ _Newest first. Each entry corresponds to work pushed to `main`._
   existing recursive wildcard under `/users/{uid}` already covers it).
 
 ### 2026-08-04 (later)
+
 - **Class sharing, Phase 1 (read-only)** — share a class with other teachers by email invite.
   Shared classes live in a new top-level `/sharedClasses` collection with a program **snapshot**;
   invites (`/classInvites`) require a verified matching sign-in email and are consumed atomically
@@ -297,6 +404,7 @@ _Newest first. Each entry corresponds to work pushed to `main`._
   timetables are never shared. ⚠ Requires deploying the updated `firestore.rules`.
 
 ### 2026-08-04
+
 - New **Classes** section — a "My Classes" page to set up each class you teach (name, subject,
   code, year group, room, colour, icon — auto-picked from the subject but customisable), with
   one-click suggestions pulled from the timetable. Each
@@ -307,6 +415,7 @@ _Newest first. Each entry corresponds to work pushed to `main`._
   yet.
 
 ### 2026-07-28
+
 - **Account deletion now erases all Firestore data** — previously only the profile doc + auth user
   were removed, orphaning subcollections (timetable, programs/lessons, entries, planning,
   notifications, meta, feedback). Now cascades through every subcollection first.
@@ -336,6 +445,7 @@ _Newest first. Each entry corresponds to work pushed to `main`._
   to "each term starts on Week A" (`termStartWeek` field).
 
 ### 2026-07-27
+
 - Admin **View as user** — read-only whole-app impersonation for diagnosing beta issues (effective
   uid routes all data reads; persistent banner; writes blocked by rules + Settings gating).
 - Added an **Achievements** page (profile menu) — auto-awarded badges across consistency,
@@ -345,6 +455,7 @@ _Newest first. Each entry corresponds to work pushed to `main`._
   Enabled the nav item (removed "Soon").
 
 ### 2026-07-22
+
 - Diary entries are now **editable** after saving (note, class details, outcomes, evidence).
 - Coming-soon page: added the app dashboard mockup with floating badges (app.daywise.au).
 - Record Lesson now matches against the **program(s) a class follows** (class → program link set
@@ -354,8 +465,9 @@ _Newest first. Each entry corresponds to work pushed to `main`._
   SEMa268): entry↔class matching now requires the class name to match, not just the subject.
 
 ### 2026-07-15
+
 - **Weekly progress reminder emails** (Fridays, AU) via GitHub Actions + SendGrid; Settings toggle
-  + unsubscribe. Added `emailReminders` profile flag; setup in `EMAIL_REMINDERS_SETUP.md`.
+  - unsubscribe. Added `emailReminders` profile flag; setup in `EMAIL_REMINDERS_SETUP.md`.
 - Admin: **App usage** dashboard — total users, program/timetable adoption, lessons recorded, and
   a per-user table (plan, school/state, joined, last active, program ✓, timetable ✓, lessons).
   Added an admin read rule for `/users/**`.
@@ -380,12 +492,14 @@ _Newest first. Each entry corresponds to work pushed to `main`._
   Lesson; shows "Recorded" once done.
 
 ### 2026-07-14
+
 - Timetable cell editor: option to **apply a colour to all matching classes**.
 - **Auto-assign class colours on import** (matching classes share a colour).
 - Programs page defaults to the **Term** grouped view.
 - **Drag-and-drop** classes on the timetable import review grid (move/swap per week).
 
 ### 2026-07-13
+
 - History: only **numbered teaching periods** are recordable (roll call/meetings/breaks excluded).
 - History day panel respects the term calendar; **each term starts Week A**; Record pre-fills
   from the day view.
@@ -399,6 +513,7 @@ _Newest first. Each entry corresponds to work pushed to `main`._
 - Added "first day of term" setup (later superseded by the term calendar).
 
 ### 2026-07-11
+
 - Rebuilt **History as a calendar** with evidence-coverage status.
 - Adopted the **Curriculum Intelligence v2.0** evidence prompt + empty-state hints.
 - Added **grouped views** to the Programs page.
@@ -406,11 +521,13 @@ _Newest first. Each entry corresponds to work pushed to `main`._
 - Expanded timetable class colours from 6 to **12**.
 
 ### 2026-07-07
+
 - New daywise **brand mark, wordmark (light/dark) and icons**.
 - Updated tagline to **"Teach. Talk. Done."**
 - Renamed app to **daywise**; moved base path to `/daywise/` after repo rename.
 
 ### 2026-07-05
+
 - Renamed brand across UI/docs; **branded confirmation dialogs**.
 - Fixed voice recording **duplicating words on mobile**.
 - Added **diary entries to global search**.
@@ -418,6 +535,7 @@ _Newest first. Each entry corresponds to work pushed to `main`._
 - **Break full-year programs into terms**; clickable URLs in lessons.
 
 ### 2026-07-04
+
 - **Perpetual (Founding Teacher)** plan + sidebar badge; **feature gating** by plan.
 - Dashboard welcome banner only when no programs exist.
 - **Global search** command palette; deep-link to the exact lesson.
@@ -427,13 +545,16 @@ _Newest first. Each entry corresponds to work pushed to `main`._
 - **AI timetable extraction** via Firebase AI Logic (Gemini).
 
 ### 2026-07-03
+
 - **Timetable import** from PDF/Word/Excel; **Week A/B** detection; per-day bell-time exceptions;
   fortnightly support; account settings + editable weekly timetable. Fixes for import save and
   settings seeding.
 
 ### 2026-07-02
+
 - **Firebase authentication** + protected app dashboard; graceful handling when Firebase isn't
   configured.
 
 ### 2026-07-01 → initial
+
 - Initial daywise marketing website.

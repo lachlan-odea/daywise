@@ -1,4 +1,4 @@
-import type { LessonEntry } from './entries'
+import { entryHasEvidence, type LessonEntry } from './entries'
 import type { Lesson, Program } from './programs'
 import { currentTermIndex, mondayOf, type Timetable, cellKey, currentWeek } from './timetable'
 import { BADGES, computeStats } from './achievements'
@@ -195,17 +195,6 @@ export function buildOverview(params: {
     if (c !== '|') classSet.add(c)
   }
 
-  const hasEvidence = (e: LessonEntry) =>
-    !!e.evidence &&
-    !!(
-      e.evidence.annotations ||
-      e.evidence.assessmentEvidence ||
-      e.evidence.differentiation ||
-      e.evidence.reflection ||
-      e.evidence.nextSteps?.length ||
-      e.outcomes?.length
-    )
-
   // Programs active this period
   const programsActive =
     period === 'term' && term
@@ -234,7 +223,8 @@ export function buildOverview(params: {
   const kpis: Kpis = {
     lessonsTaught: inPeriod.length,
     daysRemaining,
-    evidenceEntries: inPeriod.filter(hasEvidence).length,
+    // inPeriod has already excluded missed lessons, so entryHasEvidence is enough.
+    evidenceEntries: inPeriod.filter(entryHasEvidence).length,
     programsActive,
     lessonsThisWeek,
     outcomesCovered: outcomeSet.size,
@@ -346,18 +336,34 @@ export function downloadCsv(filename: string, csv: string) {
 /** Full evidence register for the period — one row per diary entry. */
 export function evidenceRegisterCsv(entries: LessonEntry[]): string {
   const header = [
-    'Date', 'Subject', 'Class', 'Room', 'Program', 'Lesson', 'Confidence', 'Outcomes',
-    'Note', 'Program annotation', 'Assessment evidence', 'Differentiation', 'Reflection', 'Next steps',
+    'Date', 'Subject', 'Class', 'Room', 'Program', 'Lesson', 'Program position', 'Confidence', 'Outcomes',
+    'Outcome connections', 'Note', 'Program annotation', 'Assessment evidence', 'Differentiation',
+    'HPGE opportunities', 'Teaching standards (APST)', 'Syllabus content', 'Reflection', 'Next steps',
   ]
+  // Each action carries the evidence-based reason it was recommended, which is the part
+  // that makes it defensible in an accreditation conversation — so keep them paired.
+  const action = (a: { action: string; reason?: string }) => (a.reason ? `${a.action} (${a.reason})` : a.action)
   const rows = entries
     .filter((e) => !e.missed)
     .sort((a, b) => a.date.localeCompare(b.date))
-    .map((e) => [
-      e.date, e.subject || '', e.className || '', e.room || '', e.programName || '', e.lessonTitle || '',
-      e.confidence || '', (e.outcomes ?? []).join('; '), e.note || '',
-      e.evidence?.annotations || '', e.evidence?.assessmentEvidence || '', e.evidence?.differentiation || '',
-      e.evidence?.reflection || '', (e.evidence?.nextSteps ?? []).join('; '),
-    ])
+    .map((e) => {
+      const ev = e.evidence
+      const nextSteps = ev?.nextActions?.length
+        ? ev.nextActions.map(action).join('; ')
+        : (ev?.nextSteps ?? []).join('; ')
+      return [
+        e.date, e.subject || '', e.className || '', e.room || '', e.programName || '', e.lessonTitle || '',
+        ev?.curriculumLinks?.programPosition || '',
+        e.confidence || '', (e.outcomes ?? []).join('; '),
+        (ev?.outcomeConnections ?? []).map((o) => `${o.code}: ${o.connection ?? ''}`.trim()).join(' | '),
+        e.note || '',
+        ev?.annotations || '', ev?.assessmentEvidence || '', ev?.differentiation || '',
+        (ev?.hpgeOpportunities ?? []).map((h) => `${h.domain} (${h.type}): ${h.description}`).join(' | '),
+        (ev?.teachingStandards ?? []).map((s) => `${s.focusArea} ${s.title ?? ''} — ${s.connection ?? ''}`.trim()).join(' | '),
+        (ev?.curriculumLinks?.syllabusContent ?? []).join(' | '),
+        ev?.reflection || '', nextSteps,
+      ]
+    })
   return toCsv([header, ...rows])
 }
 

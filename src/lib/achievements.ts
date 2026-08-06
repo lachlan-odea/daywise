@@ -1,6 +1,6 @@
 import { arrayUnion, doc, getDoc, onSnapshot, setDoc } from 'firebase/firestore'
 import { db } from './firebase'
-import type { LessonEntry } from './entries'
+import { entryHasEvidence, type LessonEntry } from './entries'
 import type { Lesson, Program } from './programs'
 import { classKey } from './classPrograms'
 import { NO_AWAY_DAYS } from './away'
@@ -248,17 +248,6 @@ export function computeStats(params: {
   // Missed lessons count toward coverage (completeness) but not as taught lessons.
   const taught = entries.filter((e) => !e.missed)
 
-  const hasEvidence = (e: LessonEntry) =>
-    !!e.evidence &&
-    !!(
-      e.evidence.annotations ||
-      e.evidence.assessmentEvidence ||
-      e.evidence.differentiation ||
-      e.evidence.reflection ||
-      e.evidence.nextSteps?.length ||
-      e.outcomes?.length
-    )
-
   let programsStarted = 0
   let programsCompleted = 0
   let outcomeExpert = false
@@ -283,7 +272,8 @@ export function computeStats(params: {
 
   return {
     lessons: taught.length,
-    evidence: taught.filter(hasEvidence).length,
+    // `taught` has already excluded missed lessons.
+    evidence: taught.filter(entryHasEvidence).length,
     programsStarted,
     programsCompleted,
     outcomeExpert,

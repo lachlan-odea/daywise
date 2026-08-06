@@ -114,11 +114,26 @@ export default function GlobalSearch() {
             type: 'entry',
             title: e.lessonTitle || [e.subject, e.className].filter(Boolean).join(' · ') || 'Lesson entry',
             subtitle: [formatDate(e.date), e.subject, e.className].filter(Boolean).join(' · '),
-            text: `${e.note} ${e.subject} ${e.className} ${e.lessonTitle ?? ''} ${(e.outcomes ?? []).join(' ')} ${
-              ev?.annotations ?? ''
-            } ${ev?.assessmentEvidence ?? ''} ${ev?.reflection ?? ''} ${ev?.differentiation ?? ''} ${(
-              ev?.nextSteps ?? []
-            ).join(' ')}`.toLowerCase(),
+            // Everything a teacher might search an entry by, including the v6.5 groups
+            // (outcome connections, HPGE, APST focus areas and titles, syllabus content).
+            text: [
+              e.note,
+              e.subject,
+              e.className,
+              e.lessonTitle ?? '',
+              (e.outcomes ?? []).join(' '),
+              ev?.annotations ?? '',
+              ev?.assessmentEvidence ?? '',
+              ev?.reflection ?? '',
+              ev?.differentiation ?? '',
+              (ev?.nextSteps ?? []).join(' '),
+              (ev?.outcomeConnections ?? []).map((o) => `${o.code} ${o.description ?? ''} ${o.connection ?? ''}`).join(' '),
+              (ev?.hpgeOpportunities ?? []).map((h) => `${h.domain} ${h.description}`).join(' '),
+              (ev?.teachingStandards ?? []).map((s) => `${s.focusArea} ${s.title ?? ''} ${s.connection ?? ''}`).join(' '),
+              (ev?.curriculumLinks?.syllabusContent ?? []).join(' '),
+            ]
+              .join(' ')
+              .toLowerCase(),
             to: `/app/history/${e.id}`,
           })
         }

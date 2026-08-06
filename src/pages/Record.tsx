@@ -13,14 +13,16 @@ import {
   Wand2,
   BookOpen,
   Info,
+  NotebookPen,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition'
 import { aiAvailable } from '../lib/aiTimetable'
-import { generateEvidence, type Candidate, type GeneratedEvidence } from '../lib/aiRecord'
+import { generateEvidence, toEvidence, type Candidate, type GeneratedEvidence } from '../lib/aiRecord'
 import { getProgramList, getProgram, type Program } from '../lib/programs'
 import { subscribeTimetable, cellKey, currentWeek, type Timetable } from '../lib/timetable'
-import { saveEntry, EMPTY_EVIDENCE, type Evidence } from '../lib/entries'
+import { subscribePlanningDay, type PlanningNotes } from '../lib/planning'
+import { saveEntry, EMPTY_EVIDENCE, type Evidence, type NextAction } from '../lib/entries'
 import {
   subscribeClassPrograms,
   setClassProgramsForClass,
@@ -110,6 +112,100 @@ function EvidenceField({
   )
 }
 
+/**
+ * Next-lesson actions, which v6.5 returns as an action plus the evidence-based reason
+ * for it. The reason is what makes the action defensible later, so it's editable
+ * alongside the action rather than hidden.
+ */
+function ActionsField({ items, onChange }: { items: NextAction[]; onChange: (v: NextAction[]) => void }) {
+  const patch = (i: number, next: Partial<NextAction>) =>
+    onChange(items.map((a, j) => (j === i ? { ...a, ...next } : a)))
+
+  return (
+    <div>
+      <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-navy-400">Next lesson actions</p>
+      <div className="space-y-2">
+        {items.map((a, i) => (
+          <div key={i} className="rounded-xl border border-navy-100 bg-white p-2.5">
+            <div className="flex items-center gap-1.5">
+              <input
+                value={a.action}
+                onChange={(e) => patch(i, { action: e.target.value })}
+                placeholder="Action"
+                className="w-full rounded-lg border border-navy-200 px-3 py-1.5 text-sm font-semibold text-navy-800 outline-none focus:border-teal-400"
+              />
+              <button
+                onClick={() => onChange(items.filter((_, k) => k !== i))}
+                className="shrink-0 rounded-lg p-1.5 text-navy-300 hover:bg-red-50 hover:text-red-500"
+                aria-label="Remove action"
+              >
+                <X size={14} />
+              </button>
+            </div>
+            <input
+              value={a.reason ?? ''}
+              onChange={(e) => patch(i, { reason: e.target.value })}
+              placeholder="Why — the evidence behind it"
+              className="mt-1.5 w-full rounded-lg border border-navy-100 px-3 py-1.5 text-xs text-navy-600 outline-none focus:border-teal-400"
+            />
+          </div>
+        ))}
+        <button
+          onClick={() => onChange([...items, { action: '', reason: '' }])}
+          className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-teal-600 hover:bg-teal-50"
+        >
+          <Plus size={13} /> Add action
+        </button>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * The three v6.5 field groups that are claims about professional practice rather than
+ * free text. They're shown as removable rows: a teacher who doesn't accept an APST or
+ * HPGE link shouldn't have to save it, but there's nothing useful to hand-type here.
+ */
+function ClaimList({
+  label,
+  hint,
+  rows,
+  onRemove,
+}: {
+  label: string
+  hint?: string
+  rows: { key: string; head: string; body?: string }[]
+  onRemove: (i: number) => void
+}) {
+  if (!rows.length) return null
+  return (
+    <div>
+      <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-navy-400">{label}</p>
+      {hint && <p className="mb-1.5 text-xs text-navy-400">{hint}</p>}
+      <div className="space-y-1.5">
+        {rows.map((r, i) => (
+          <div key={i} className="flex items-start gap-2 rounded-xl border border-navy-100 bg-white px-3 py-2">
+            <span className="mt-0.5 shrink-0 rounded-md bg-navy-50 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-navy-600">
+              {r.key}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-navy-800">{r.head}</p>
+              {r.body && <p className="mt-0.5 text-xs leading-relaxed text-navy-500">{r.body}</p>}
+            </div>
+            <button
+              onClick={() => onRemove(i)}
+              className="shrink-0 rounded-lg p-1.5 text-navy-300 hover:bg-red-50 hover:text-red-500"
+              aria-label={`Remove from ${label}`}
+            >
+              <X size={14} />
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function Record() {
   const { user, effectiveUid } = useAuth()
   const navigate = useNavigate()
@@ -194,6 +290,37 @@ export default function Record() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [curKey, classMap, programsList])
 
+  /*
+   * The teacher's own planning note for this class on this day, passed to Curriculum
+   * Intelligence as teacher_notes.
+   *
+   * v6.5 reads it either way round: a retrospective note ("the video worked better
+   * than the worksheet") counts as lesson evidence in its own right, while a
+   * forward-looking one ("prepare the ramp prac") only informs next-lesson actions.
+   * The note is matched to the timetable period this class occupies on `date`.
+   */
+  const [planning, setPlanning] = useState<PlanningNotes>({})
+
+  useEffect(() => {
+    if (!user) return
+    return subscribePlanningDay(effectiveUid, date, setPlanning)
+  }, [user, effectiveUid, date])
+
+  const teacherNotes = useMemo(() => {
+    if (!tt || !hasClass) return ''
+    const [y, m, d] = date.split('-').map(Number)
+    if (!y) return ''
+    const dt = new Date(y, (m || 1) - 1, d || 1)
+    const day = (dt.getDay() + 6) % 7
+    if (day > 4) return ''
+    const week = currentWeek(tt, dt)
+    const period = tt.periods.find((p) => {
+      const cell = tt.cells[cellKey(week, p.id, day)]
+      return !!cell && classKey(cell.subject, cell.className) === curKey
+    })
+    return (period ? planning[period.id]?.text : '')?.trim() ?? ''
+  }, [tt, date, planning, curKey, hasClass])
+
   const todaysClasses = useMemo(() => {
     const day = todayIndex()
     if (day < 0 || !tt) return []
@@ -225,17 +352,32 @@ export default function Record() {
     const cands: Candidate[] = []
     for (const res of fulls) {
       if (!res) continue
-      for (const l of res.lessons) {
-        if (l.id)
-          cands.push({
-            programId: res.program.id!,
-            programName: res.program.name,
-            subject: res.program.subject,
-            lessonId: l.id,
-            title: l.title,
-            outcomes: l.outcomes,
-          })
-      }
+      // Ordered so each candidate can carry its position ("Lesson 5 of 12"), which
+      // v6.5 copies into curriculum_links.program_position.
+      const ordered = [...res.lessons].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+      const total = res.program.lessonCount || ordered.length
+      ordered.forEach((l, i) => {
+        if (!l.id) return
+        cands.push({
+          programId: res.program.id!,
+          programName: res.program.name,
+          subject: res.program.subject,
+          lessonId: l.id,
+          title: l.title,
+          outcomes: l.outcomes,
+          position: i + 1,
+          programLessonCount: total,
+          // The planned lesson content — supplied as curriculum context, never as
+          // evidence that any of it happened.
+          detail: {
+            learningIntentions: l.learningIntentions,
+            successCriteria: l.successCriteria,
+            activities: l.activities,
+            resources: l.resources,
+            assessment: l.assessment,
+          },
+        })
+      })
     }
     candidatesRef.current = cands
     return cands
@@ -275,21 +417,42 @@ export default function Record() {
         note: note.trim(),
         klass: subject || className ? { subject, className } : undefined,
         candidates,
+        teacherNotes,
       })
       setGen(result)
       setOutcomes(result.outcomes)
-      setEv({
-        annotations: result.annotations,
-        assessmentEvidence: result.assessmentEvidence,
-        differentiation: result.differentiation,
-        reflection: result.reflection,
-        nextSteps: result.nextSteps,
-      })
+      setEv(toEvidence(result))
       setStep('review')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not generate evidence. Please try again.')
     } finally {
       setGenerating(false)
+    }
+  }
+
+  /**
+   * Outcomes are edited as a plain list of codes, so anything keyed to a code has to be
+   * re-checked against the edited list before saving: a connection for a code the
+   * teacher deleted would otherwise survive, and a code they typed simply has no
+   * connection. `nextSteps` is derived here so the flat and structured forms of the
+   * actions can't disagree.
+   */
+  const evidenceToSave = (): Evidence => {
+    const keep = new Set(outcomes.map((c) => c.trim().toLowerCase()).filter(Boolean))
+    const inKeep = <T extends { code: string }>(rows?: T[]) =>
+      rows?.filter((r) => keep.has(r.code.trim().toLowerCase()))
+    const actions = (ev.nextActions ?? [])
+      .map((a) => ({ action: a.action.trim(), reason: a.reason?.trim() || undefined }))
+      .filter((a) => !!a.action)
+
+    return {
+      ...ev,
+      nextActions: actions,
+      nextSteps: actions.map((a) => a.action),
+      outcomeConnections: inKeep(ev.outcomeConnections),
+      curriculumLinks: ev.curriculumLinks
+        ? { ...ev.curriculumLinks, outcomes: inKeep(ev.curriculumLinks.outcomes) }
+        : undefined,
     }
   }
 
@@ -309,8 +472,8 @@ export default function Record() {
         lessonId: withEvidence ? gen?.matchedLessonId ?? undefined : undefined,
         lessonTitle: withEvidence ? gen?.matchedLessonTitle || undefined : undefined,
         confidence: withEvidence ? gen?.confidence : undefined,
-        outcomes: withEvidence ? outcomes : [],
-        evidence: withEvidence ? ev : EMPTY_EVIDENCE,
+        outcomes: withEvidence ? outcomes.map((o) => o.trim()).filter(Boolean) : [],
+        evidence: withEvidence ? evidenceToSave() : EMPTY_EVIDENCE,
       })
       navigate(`/app/history/${id}`)
     } catch {
@@ -495,6 +658,13 @@ export default function Record() {
                 <span className="h-2 w-2 animate-pulse rounded-full bg-red-500" /> Listening…
               </p>
             )}
+            {/* Say so plainly — the note was written for the teacher, not for the AI. */}
+            {!!teacherNotes && (
+              <p className="mt-1.5 flex items-start gap-1.5 text-xs text-navy-400">
+                <NotebookPen size={13} className="mt-0.5 shrink-0 text-navy-300" />
+                Your planning note for this class will be included as context.
+              </p>
+            )}
           </div>
 
           {error && (
@@ -552,7 +722,23 @@ export default function Record() {
               </span>
             </div>
 
-            <ListField label="Outcomes" items={outcomes} onChange={setOutcomes} placeholder="outcome" />
+            <div>
+              <ListField label="Outcomes" items={outcomes} onChange={setOutcomes} placeholder="outcome" />
+              {/* How the lesson connected to each outcome. Read-only: deleting the code
+                  above drops its connection on save, and there's no useful way to
+                  hand-write one. */}
+              {!!ev.outcomeConnections?.length && (
+                <ul className="mt-2 space-y-1.5">
+                  {ev.outcomeConnections.map((o, i) => (
+                    <li key={i} className="rounded-lg bg-cloud px-3 py-2 text-xs leading-relaxed text-navy-600">
+                      <b className="text-navy-800">{o.code}</b>
+                      {o.description ? ` — ${o.description}` : ''}
+                      {o.connection ? <span className="mt-0.5 block text-navy-500">{o.connection}</span> : null}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
             <EvidenceField
               label="Program annotation"
               value={ev.annotations}
@@ -579,19 +765,65 @@ export default function Record() {
               )}
             </div>
             <div>
-              <ListField
-                label="Next lesson actions"
-                items={ev.nextSteps}
-                onChange={(v) => setEv({ ...ev, nextSteps: v })}
-                placeholder="action"
+              <ActionsField
+                items={ev.nextActions ?? []}
+                onChange={(v) => setEv({ ...ev, nextActions: v })}
               />
-              {ev.nextSteps.length === 0 && (
+              {!(ev.nextActions ?? []).length && (
                 <p className="mt-1.5 flex items-center gap-1.5 text-xs text-navy-400">
                   <Info size={13} className="shrink-0 text-navy-300" /> No next steps were drawn from your note — add any
                   follow-ups if you’d like.
                 </p>
               )}
             </div>
+
+            <ClaimList
+              label="HPGE opportunities"
+              hint="Challenge the lesson offered, or could offer next time — not a judgement about any student."
+              rows={(ev.hpgeOpportunities ?? []).map((h) => ({
+                key: h.type === 'observed' ? 'Observed' : 'Suggested',
+                head: h.domain.charAt(0).toUpperCase() + h.domain.slice(1),
+                body: h.description,
+              }))}
+              onRemove={(i) =>
+                setEv({ ...ev, hpgeOpportunities: (ev.hpgeOpportunities ?? []).filter((_, k) => k !== i) })
+              }
+            />
+
+            <ClaimList
+              label="Teaching standards (APST)"
+              hint="Focus areas this lesson evidences. Remove any you'd rather not claim."
+              rows={(ev.teachingStandards ?? []).map((s) => ({
+                key: s.focusArea,
+                head: s.title || `Focus area ${s.focusArea}`,
+                body: s.connection,
+              }))}
+              onRemove={(i) =>
+                setEv({ ...ev, teachingStandards: (ev.teachingStandards ?? []).filter((_, k) => k !== i) })
+              }
+            />
+
+            {/* Curriculum links are copied from your program, not inferred, so there's
+                nothing here to accept or reject — it's shown for confirmation only. */}
+            {(ev.curriculumLinks?.programPosition || ev.curriculumLinks?.syllabusContent?.length) && (
+              <div>
+                <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-navy-400">Curriculum links</p>
+                <div className="rounded-xl border border-navy-100 bg-white px-3 py-2.5">
+                  {ev.curriculumLinks?.programPosition && (
+                    <p className="text-sm font-semibold text-navy-800">{ev.curriculumLinks.programPosition}</p>
+                  )}
+                  {!!ev.curriculumLinks?.syllabusContent?.length && (
+                    <ul className="mt-1.5 space-y-1">
+                      {ev.curriculumLinks.syllabusContent.map((s, i) => (
+                        <li key={i} className="text-xs leading-relaxed text-navy-500">
+                          • {s}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            )}
 
             {error && (
               <div className="flex items-start gap-2 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
