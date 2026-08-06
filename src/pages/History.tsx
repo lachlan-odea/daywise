@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   History as HistoryIcon,
@@ -133,7 +133,6 @@ export default function History() {
   const today = useMemo(() => new Date(), [])
   const [view, setView] = useState({ year: today.getFullYear(), month: today.getMonth() })
   const [selected, setSelected] = useState<string>(isoOf(today))
-  const seeded = useRef(false)
 
   useEffect(() => {
     if (!user) return
@@ -181,16 +180,19 @@ export default function History() {
     }
   }
 
-  // On first load, jump to the most recent entry.
-  useEffect(() => {
-    if (seeded.current || !entries) return
-    if (entries.length) {
-      const d = parseISO(entries[0].date)
-      setView({ year: d.getFullYear(), month: d.getMonth() })
-      setSelected(entries[0].date)
-    }
-    seeded.current = true
-  }, [entries])
+  /*
+   * The Diary deliberately opens on TODAY and stays there.
+   *
+   * It used to jump to `entries[0].date` on first load ("the most recent entry"),
+   * but subscribeEntries orders by createdAt, not by date — so that was the date
+   * *field* of the most recently *created* entry. The two diverge whenever a lesson
+   * is backfilled, dated ahead, or has its date edited later, which left the
+   * calendar sitting on a date with no apparent connection to today. Teachers who
+   * only ever record same-day never saw it, so it looked random and intermittent.
+   *
+   * Today needs no seeding: `view` and `selected` are initialised to it above, and
+   * the month's coverage dots already show where the recorded lessons are.
+   */
 
   const entriesByDate = useMemo(() => {
     const map = new Map<string, LessonEntry[]>()
